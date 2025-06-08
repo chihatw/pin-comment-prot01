@@ -1,6 +1,5 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 
 // 円の型
 interface Circle {
@@ -23,211 +22,8 @@ interface EditState {
   selectedId: number | null; // 追加: クリック選択用
 }
 
-function ZoomSlider({
-  zoom,
-  setZoom,
-  setTransform,
-  getTransform,
-  imgWidth,
-  imgHeight,
-  mode,
-  setMode,
-}: {
-  zoom: number;
-  setZoom: (z: number) => void;
-  setTransform: (
-    x: number,
-    y: number,
-    scale: number,
-    duration?: number,
-    animationType?: string
-  ) => void;
-  getTransform: () => { positionX: number; positionY: number; scale: number };
-  imgWidth: number;
-  imgHeight: number;
-  mode: 'view' | 'edit';
-  setMode: (m: 'view' | 'edit') => void;
-}) {
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newScale = parseFloat(e.target.value);
-    setZoom(newScale);
-    // 現在の中心を維持するズーム
-    const { positionX, positionY, scale } = getTransform();
-    // 現在の表示中心（画像座標）
-    const centerX = (-positionX + imgWidth / 2) / scale;
-    const centerY = (-positionY + imgHeight / 2) / scale;
-    // 新しいx, yを計算
-    const newX = -(centerX * newScale - imgWidth / 2);
-    const newY = -(centerY * newScale - imgHeight / 2);
-    setTransform(newX, newY, newScale, 200, 'easeOut'); // x, yは0で維持
-  };
-  // リセットボタン
-  const handleReset = () => {
-    setZoom(1);
-    setTransform(0, 0, 1, 200, 'easeOut');
-  };
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: '50%',
-        bottom: 32,
-        transform: 'translateX(-50%)',
-        zIndex: 20,
-        background: '#fff',
-        borderRadius: 8,
-        boxShadow: '0 2px 8px #b3e5fc33',
-        padding: '8px 18px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        border: '1.5px solid #e3f2fd',
-      }}
-    >
-      {/* モード切替スイッチ（スライダー横） */}
-      <div style={{ display: 'flex', gap: 0 }}>
-        <button
-          onClick={() => setMode('view')}
-          aria-label='表示モード'
-          style={{
-            background: mode === 'view' ? '#4fc3f7' : '#fff',
-            color: mode === 'view' ? '#fff' : '#039be5',
-            border: '1.5px solid #4fc3f7',
-            borderRadius: '8px 0 0 8px',
-            padding: '8px 16px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            boxShadow: mode === 'view' ? '0 2px 8px #b3e5fc88' : 'none',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 48,
-            height: 48,
-          }}
-        >
-          {/* 手のひら（パン）アイコン */}
-          <svg
-            width='28'
-            height='28'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2.2'
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            style={{ display: 'block' }}
-          >
-            <path d='M7 11V5.5a2.5 2.5 0 0 1 5 0V12' />
-            <path d='M12 12V7.5a2.5 2.5 0 0 1 5 0V14' />
-            <path d='M17 14v-2.5a2.5 2.5 0 0 1 5 0V17a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5v-4.5a2.5 2.5 0 0 1 5 0V17' />
-          </svg>
-        </button>
-        <button
-          onClick={() => setMode('edit')}
-          aria-label='編集モード'
-          style={{
-            background: mode === 'edit' ? '#4fc3f7' : '#fff',
-            color: mode === 'edit' ? '#fff' : '#039be5',
-            border: '1.5px solid #4fc3f7',
-            borderLeft: 'none',
-            borderRadius: '0 8px 8px 0',
-            padding: '8px 16px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            boxShadow: mode === 'edit' ? '0 2px 8px #b3e5fc88' : 'none',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 48,
-            height: 48,
-          }}
-        >
-          {/* 鉛筆のアイコン */}
-          <svg
-            width='26'
-            height='26'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2.2'
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            style={{ display: 'block' }}
-          >
-            <path d='M12 20h9' />
-            <path d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z' />
-          </svg>
-        </button>
-      </div>
-      {/* 虫眼鏡アイコン */}
-      <svg
-        width='22'
-        height='22'
-        viewBox='0 0 24 24'
-        fill='none'
-        stroke='#039be5'
-        strokeWidth='2.2'
-        strokeLinecap='round'
-        strokeLinejoin='round'
-        style={{ display: 'block' }}
-      >
-        <circle cx='11' cy='11' r='7' />
-        <line x1='21' y1='21' x2='16.65' y2='16.65' />
-      </svg>
-      <input
-        type='range'
-        min={0.5}
-        max={4}
-        step={0.01}
-        value={zoom}
-        onChange={handleSliderChange}
-        style={{ width: 180 }}
-        aria-label='ズーム'
-      />
-      <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
-        {(zoom * 100).toFixed(0)}%
-      </span>
-      {/* リセットボタン */}
-      <button
-        onClick={handleReset}
-        aria-label='初期表示にリセット'
-        style={{
-          marginLeft: 8,
-          background: '#e3f2fd',
-          border: 'none',
-          borderRadius: 6,
-          padding: 6,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          boxShadow: '0 1px 4px #b3e5fc33',
-          transition: 'background 0.2s',
-        }}
-      >
-        {/* リセット（回転矢印）アイコン */}
-        <svg
-          width='20'
-          height='20'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='#039be5'
-          strokeWidth='2.2'
-          strokeLinecap='round'
-          strokeLinejoin='round'
-        >
-          <polyline points='1 4 1 10 7 10' />
-          <path d='M3.51 15a9 9 0 1 0 2.13-9.36L1 10' />
-        </svg>
-      </button>
-    </div>
-  );
-}
-
 export default function Home() {
   const [circles, setCircles] = useState<Circle[]>([]);
-  // 編集用状態（ドラッグ・描画・リサイズ・ホバーなど）
   const [edit, setEdit] = useState<EditState>({
     dragId: null,
     dragOffset: { dx: 0, dy: 0 },
@@ -236,31 +32,11 @@ export default function Home() {
     resizeStart: null,
     lastMouse: null,
     hoverId: null,
-    selectedId: null, // 追加
+    selectedId: null,
   });
-  // Undo履歴（最大10件）
   const [undoStack, setUndoStack] = useState<Circle[][]>([]);
-  const isPushingUndo = useRef(false); // 無限ループ防止
-  // ズーム値
-  const [zoom, setZoom] = useState<number>(1);
-  // Transform API
-  const [setTransformApi, setSetTransformApi] = useState<
-    | ((
-        x: number,
-        y: number,
-        scale: number,
-        duration?: number,
-        animationType?: string
-      ) => void)
-    | null
-  >(null);
-  const [getTransformApi, setGetTransformApi] = useState<
-    (() => { positionX: number; positionY: number; scale: number }) | null
-  >(null);
-  // --- モード切替はuseStateのまま維持 ---
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const isPushingUndo = useRef(false);
 
-  // 画像サイズ（px）
   const imgWidth = 800;
   const imgHeight = 600;
 
@@ -331,13 +107,12 @@ export default function Home() {
   const handleSvgMouseDown = useCallback(
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       if (edit.drawing !== null) return;
-      if (mode !== 'edit') return;
       if (e.button !== 0) return;
       const { x, y } = getSvgRelativeCoords(e);
       pushUndo(circles);
       setEdit((prev) => ({ ...prev, drawing: { startX: x, startY: y } }));
     },
-    [edit, mode, circles]
+    [edit, circles]
   );
 
   const handleSvgMouseMove = useCallback(
@@ -369,9 +144,9 @@ export default function Home() {
     [edit]
   );
 
+  // 円ドラッグ開始
   const handleCircleMouseDown = useCallback(
     (id: number, e: React.MouseEvent) => {
-      if (mode !== 'edit') return;
       e.stopPropagation();
       const { x, y } = getSvgRelativeCoords(
         e as React.MouseEvent<SVGCircleElement, MouseEvent>
@@ -383,9 +158,10 @@ export default function Home() {
         dragOffset: { dx: circle.x - x, dy: circle.y - y },
       }));
     },
-    [mode, circles, edit]
+    [circles, edit]
   );
 
+  // SVG上でのドラッグ移動
   const handleSvgDragMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       if (edit.dragId === null) return;
@@ -404,6 +180,7 @@ export default function Home() {
     [edit, circles]
   );
 
+  // ドラッグ終了
   const handleSvgDragEnd = useCallback(() => {
     setEdit((prev) => ({
       ...prev,
@@ -413,14 +190,14 @@ export default function Home() {
     isPushingUndo.current = false;
   }, [edit]);
 
+  // 円右クリック（コンテキストメニュー）
   const handleCircleRightClick = useCallback(
     (id: number, e: React.MouseEvent) => {
-      if (mode !== 'edit') return;
       e.preventDefault();
       pushUndo(circles);
       setCircles((prev) => prev.filter((c) => c.id !== id));
     },
-    [mode, circles]
+    [circles]
   );
 
   // --- useMemoで円の描画用データを最適化（依存配列をhoverId等に限定）---
@@ -431,7 +208,6 @@ export default function Home() {
         // ホバー中かつリサイズ中でない円にのみハンドラを表示
         if (
           edit.hoverId === c.id &&
-          mode === 'edit' &&
           (!edit.resizeId || edit.resizeId === c.id)
         ) {
           const cx_px = (c.x / 100) * imgWidth;
@@ -469,7 +245,7 @@ export default function Home() {
                 style={{ cursor: 'ew-resize', pointerEvents: 'auto' }}
                 rx={0}
                 ry={0}
-                onMouseDown={(e) => {
+                onMouseDown={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   setEdit((prev) => ({
                     ...prev,
@@ -485,7 +261,7 @@ export default function Home() {
           <g
             key={c.id}
             onMouseEnter={() => setEdit((prev) => ({ ...prev, hoverId: c.id }))}
-            onPointerOut={(e) => {
+            onPointerOut={(e: React.PointerEvent) => {
               const currentTarget = e.currentTarget as Element;
               const related = e.relatedTarget as Node | null;
               if (!related || !currentTarget.contains(related)) {
@@ -514,22 +290,14 @@ export default function Home() {
               stroke={edit.selectedId === c.id ? '#1976d2' : '#039be5'}
               strokeWidth={2.5}
               onMouseDown={
-                mode === 'edit' && !edit.resizeId
+                !edit.resizeId
                   ? (e) => handleCircleMouseDown(c.id, e)
                   : undefined
               }
-              onContextMenu={
-                mode === 'edit'
-                  ? (e) => handleCircleRightClick(c.id, e)
-                  : undefined
-              }
+              onContextMenu={(e) => handleCircleRightClick(c.id, e)}
               style={{
                 cursor:
-                  mode === 'edit' && edit.hoverId === c.id && !edit.resizeId
-                    ? 'move'
-                    : mode === 'edit'
-                    ? 'grab'
-                    : 'default',
+                  edit.hoverId === c.id && !edit.resizeId ? 'move' : 'grab',
                 filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
               }}
             />
@@ -574,28 +342,12 @@ export default function Home() {
       edit.resizeId,
       edit.resizeStart,
       edit.selectedId,
-      mode,
       handleCircleMouseDown,
       handleCircleRightClick,
       imgWidth,
       imgHeight,
     ]
   );
-
-  // TransformWrapperのonZoomでズーム値を同期
-  const handleZoom = (ref: any) => {
-    setZoom(ref.state.scale);
-  };
-
-  // TransformWrapperのonInitでAPI取得
-  const handleInit = (ref: any) => {
-    setSetTransformApi(() => ref.setTransform);
-    setGetTransformApi(() => () => ({
-      positionX: ref.state.positionX,
-      positionY: ref.state.positionY,
-      scale: ref.state.scale,
-    }));
-  };
 
   // コメント編集用
   const [commentDraft, setCommentDraft] = useState('');
@@ -629,7 +381,7 @@ export default function Home() {
       style={{
         width: '100vw',
         height: '100vh',
-        display: 'flex', // 2カラム化
+        display: 'flex',
         flexDirection: 'row',
         alignItems: 'stretch',
         justifyContent: 'center',
@@ -647,250 +399,140 @@ export default function Home() {
           background: '#fff',
         }}
       >
-        {/* ズームスライダー */}
-        <TransformWrapper
-          minScale={0.5}
-          maxScale={4}
-          wheel={{ step: 0.1 }}
-          panning={{ disabled: mode !== 'view' }}
-          onZoom={handleZoom}
-          onInit={handleInit}
+        <div
+          style={{
+            position: 'relative',
+            width: imgWidth,
+            height: imgHeight,
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, #ffffff 60%, #e1f5fe 100%)',
+            boxShadow: '0 4px 24px #b3e5fc55',
+            overflow: 'hidden',
+          }}
         >
-          {setTransformApi && getTransformApi && (
-            <ZoomSlider
-              zoom={zoom}
-              setZoom={setZoom}
-              setTransform={setTransformApi}
-              getTransform={getTransformApi}
-              imgWidth={imgWidth}
-              imgHeight={imgHeight}
-              mode={mode}
-              setMode={setMode}
-            />
-          )}
-          <TransformComponent>
-            <div
-              style={{
-                position: 'relative',
-                width: imgWidth,
-                height: imgHeight,
-                borderRadius: 16,
-                background:
-                  'linear-gradient(135deg, #ffffff 60%, #e1f5fe 100%)',
-                boxShadow: '0 4px 24px #b3e5fc55',
-                overflow: 'hidden',
-              }}
-            >
-              {/* 画像 */}
-              <img
-                src='/sample.jpg'
-                width={imgWidth}
-                height={imgHeight}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: imgWidth,
-                  height: imgHeight,
-                  userSelect: 'none',
-                  borderRadius: 16,
-                  boxShadow: '0 2px 12px #b3e5fc33',
-                  zIndex: 1,
-                  pointerEvents: 'none',
-                  display: 'block',
-                }}
-                alt='写真'
-                draggable={false}
-              />
-              <svg
-                width={imgWidth}
-                height={imgHeight}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  zIndex: 2,
-                  cursor:
-                    mode === 'edit'
-                      ? edit.drawing
-                        ? 'crosshair'
-                        : edit.dragId
-                        ? 'grabbing'
-                        : 'pointer'
-                      : 'grab',
-                }}
-                onMouseDown={
-                  mode === 'edit' && edit.dragId === null
-                    ? handleSvgMouseDown
-                    : undefined
+          {/* 画像 */}
+          <img
+            src='/sample.jpg'
+            width={imgWidth}
+            height={imgHeight}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: imgWidth,
+              height: imgHeight,
+              userSelect: 'none',
+              borderRadius: 16,
+              boxShadow: '0 2px 12px #b3e5fc33',
+              zIndex: 1,
+              pointerEvents: 'none',
+              display: 'block',
+            }}
+            alt='写真'
+            draggable={false}
+          />
+          <svg
+            width={imgWidth}
+            height={imgHeight}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 2,
+              cursor: edit.drawing
+                ? 'crosshair'
+                : edit.dragId
+                ? 'grabbing'
+                : 'pointer',
+            }}
+            onMouseDown={edit.dragId === null ? handleSvgMouseDown : undefined}
+            onMouseMove={(e) => {
+              if (edit.resizeId !== null && edit.resizeStart) {
+                if (!isPushingUndo.current) {
+                  pushUndo(circles);
+                  isPushingUndo.current = true;
                 }
-                onMouseMove={(e) => {
-                  if (mode === 'edit') {
-                    if (edit.resizeId !== null && edit.resizeStart) {
-                      if (!isPushingUndo.current) {
-                        pushUndo(circles);
-                        isPushingUndo.current = true;
-                      }
-                      // --- リサイズ処理 ---
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const cx =
-                        circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
-                      const cy =
-                        circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
-                      // マウス座標（%）
-                      const mx = ((e.clientX - rect.left) / rect.width) * 100;
-                      const my = ((e.clientY - rect.top) / rect.height) * 100;
-                      // 中心→マウスの距離（%）
-                      const dx = mx - cx;
-                      const dy = my - cy;
-                      const newR = Math.sqrt(dx * dx + dy * dy);
-                      setCircles((prev) =>
-                        prev.map((c) =>
-                          c.id === edit.resizeId
-                            ? { ...c, r: Math.max(newR, 1) }
-                            : c
-                        )
-                      );
-                    } else if (edit.dragId !== null) handleSvgDragMove(e);
-                    else if (edit.drawing) handleSvgMouseMove(e);
-                  }
-                  if (edit.hoverId !== null) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = ((e.clientX - rect.left) / rect.width) * 100;
-                    const y = ((e.clientY - rect.top) / rect.height) * 100;
-                    setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
-                  }
-                }}
-                onMouseUp={(e) => {
-                  if (mode === 'edit') {
-                    if (edit.resizeId !== null) {
-                      setEdit((prev) => ({
-                        ...prev,
-                        resizeId: null,
-                        resizeStart: null,
-                      }));
-                      isPushingUndo.current = false;
-                    } else if (edit.dragId !== null) handleSvgDragEnd();
-                    else if (edit.drawing) handleSvgMouseUp(e);
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (mode === 'edit') {
-                    setEdit((prev) => ({
-                      ...prev,
-                      dragId: null,
-                      dragOffset: { dx: 0, dy: 0 },
-                      drawing: null,
-                      resizeId: null,
-                      resizeStart: null,
-                      lastMouse: null,
-                      hoverId: null,
-                    }));
-                  }
-                  setEdit((prev) => ({ ...prev, hoverId: null }));
-                }}
-                onClick={() =>
-                  setEdit((prev) => ({ ...prev, selectedId: null }))
+                // --- リサイズ処理 ---
+                const rect = e.currentTarget.getBoundingClientRect();
+                const cx = circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
+                const cy = circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
+                // マウス座標（%）
+                const mx = ((e.clientX - rect.left) / rect.width) * 100;
+                const my = ((e.clientY - rect.top) / rect.height) * 100;
+                // 中心→マウスの距離（%）
+                const dx = mx - cx;
+                const dy = my - cy;
+                const newR = Math.sqrt(dx * dx + dy * dy);
+                setCircles((prev) =>
+                  prev.map((c) =>
+                    c.id === edit.resizeId ? { ...c, r: Math.max(newR, 1) } : c
+                  )
+                );
+              } else if (edit.dragId !== null) handleSvgDragMove(e);
+              else if (edit.drawing) handleSvgMouseMove(e);
+
+              if (edit.hoverId !== null) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
+              }
+            }}
+            onMouseUp={(e) => {
+              if (edit.resizeId !== null) {
+                setEdit((prev) => ({
+                  ...prev,
+                  resizeId: null,
+                  resizeStart: null,
+                }));
+                isPushingUndo.current = false;
+              } else if (edit.dragId !== null) handleSvgDragEnd();
+              else if (edit.drawing) handleSvgMouseUp(e);
+            }}
+            onMouseLeave={() => {
+              setEdit((prev) => ({
+                ...prev,
+                dragId: null,
+                dragOffset: { dx: 0, dy: 0 },
+                drawing: null,
+                resizeId: null,
+                resizeStart: null,
+                lastMouse: null,
+                hoverId: null,
+              }));
+              setEdit((prev) => ({ ...prev, hoverId: null }));
+            }}
+            onClick={() => setEdit((prev) => ({ ...prev, selectedId: null }))}
+          >
+            {/* 既存の円 */}
+            {renderedCircles}
+            {/* 描画中の円プレビュー */}
+            {edit.drawing &&
+              edit.lastMouse &&
+              (() => {
+                const dx = edit.lastMouse.x - edit.drawing.startX;
+                const dy = edit.lastMouse.y - edit.drawing.startY;
+                const r = Math.sqrt(dx * dx + dy * dy) / 2;
+                if (r > 0.5) {
+                  const centerX = (edit.drawing.startX + edit.lastMouse.x) / 2;
+                  const centerY = (edit.drawing.startY + edit.lastMouse.y) / 2;
+                  return (
+                    <circle
+                      cx={`${centerX}%`}
+                      cy={`${centerY}%`}
+                      r={`${r}%`}
+                      fill='rgba(33, 150, 243, 0.09)'
+                      stroke='#4fc3f7'
+                      strokeDasharray='4 2'
+                      strokeWidth={2}
+                      pointerEvents='none'
+                    />
+                  );
                 }
-              >
-                {/* 既存の円 */}
-                {renderedCircles}
-                {/* 描画中の円プレビュー */}
-                {mode === 'edit' &&
-                  edit.drawing &&
-                  edit.lastMouse &&
-                  (() => {
-                    const dx = edit.lastMouse.x - edit.drawing.startX;
-                    const dy = edit.lastMouse.y - edit.drawing.startY;
-                    const r = Math.sqrt(dx * dx + dy * dy) / 2;
-                    if (r > 0.5) {
-                      const centerX =
-                        (edit.drawing.startX + edit.lastMouse.x) / 2;
-                      const centerY =
-                        (edit.drawing.startY + edit.lastMouse.y) / 2;
-                      return (
-                        <circle
-                          cx={`${centerX}%`}
-                          cy={`${centerY}%`}
-                          r={`${r}%`}
-                          fill='rgba(33, 150, 243, 0.09)'
-                          stroke='#4fc3f7'
-                          strokeDasharray='4 2'
-                          strokeWidth={2}
-                          pointerEvents='none'
-                        />
-                      );
-                    }
-                    return null;
-                  })()}
-              </svg>
-              {/* デバッグ用: 画像全体を覆う透明なrect（マウスイベント用） */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  zIndex: 1,
-                  cursor:
-                    mode === 'edit'
-                      ? edit.drawing
-                        ? 'crosshair'
-                        : 'grab'
-                      : 'default',
-                }}
-                onMouseDown={
-                  mode === 'edit' && edit.dragId === null
-                    ? handleSvgMouseDown
-                    : undefined
-                }
-                onMouseMove={(e) => {
-                  if (mode === 'edit') {
-                    if (edit.resizeId !== null && edit.resizeStart) {
-                      if (!isPushingUndo.current) {
-                        pushUndo(circles);
-                        isPushingUndo.current = true;
-                      }
-                      // --- リサイズ処理 ---
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const cx =
-                        circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
-                      const cy =
-                        circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
-                      // マウス座標（%）
-                      const mx = ((e.clientX - rect.left) / rect.width) * 100;
-                      const my = ((e.clientY - rect.top) / rect.height) * 100;
-                      // 中心→マウスの距離（%）
-                      const dx = mx - cx;
-                      const dy = my - cy;
-                      const newR = Math.sqrt(dx * dx + dy * dy);
-                      setCircles((prev) =>
-                        prev.map((c) =>
-                          c.id === edit.resizeId
-                            ? { ...c, r: Math.max(newR, 1) }
-                            : c
-                        )
-                      );
-                    } else if (edit.dragId !== null) handleSvgDragMove(e);
-                    else if (edit.drawing) handleSvgMouseMove(e);
-                  }
-                  if (edit.hoverId !== null) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = ((e.clientX - rect.left) / rect.width) * 100;
-                    const y = ((e.clientY - rect.top) / rect.height) * 100;
-                    setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
-                  }
-                }}
-                onMouseUp={(e) => {
-                  if (mode === 'edit' && edit.dragId !== null) {
-                    handleSvgDragEnd();
-                  }
-                }}
-              />
-            </div>
-          </TransformComponent>
-        </TransformWrapper>
+                return null;
+              })()}
+          </svg>
+        </div>
       </div>
       {/* 右カラム: コメント編集エリア */}
       <div
