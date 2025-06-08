@@ -242,7 +242,14 @@ export default function Home() {
   const [zoom, setZoom] = useState<number>(1);
   // Transform API
   const [setTransformApi, setSetTransformApi] = useState<
-    ((x: number, y: number, scale: number, duration?: number, animationType?: string) => void) | null
+    | ((
+        x: number,
+        y: number,
+        scale: number,
+        duration?: number,
+        animationType?: string
+      ) => void)
+    | null
   >(null);
   const [getTransformApi, setGetTransformApi] = useState<
     (() => { positionX: number; positionY: number; scale: number }) | null
@@ -256,8 +263,8 @@ export default function Home() {
 
   // Undo履歴に現在の円リストを追加（最大10件）
   const pushUndo = useCallback((prevCircles: Circle[]) => {
-    setUndoStack((stack) => {
-      const newStack = [...stack, prevCircles.map((c) => ({ ...c }))];
+    setUndoStack((prev) => {
+      const newStack = [...prev, prevCircles.map((c) => ({ ...c }))];
       if (newStack.length > 10) newStack.shift();
       return newStack;
     });
@@ -268,7 +275,7 @@ export default function Home() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (edit.drawing === null && e.key === 'Escape' && undoStack.length > 0) {
         setCircles(undoStack[undoStack.length - 1]);
-        setUndoStack((stack) => stack.slice(0, -1));
+        setUndoStack((prev) => prev.slice(0, -1));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -284,7 +291,9 @@ export default function Home() {
     if (svgRect) {
       rect = svgRect;
     } else if ('ownerSVGElement' in e.target && e.target.ownerSVGElement) {
-      rect = (e.target as SVGCircleElement).ownerSVGElement!.getBoundingClientRect();
+      rect = (
+        e.target as SVGCircleElement
+      ).ownerSVGElement!.getBoundingClientRect();
     } else if ('getBoundingClientRect' in e.target) {
       rect = (e.target as SVGSVGElement).getBoundingClientRect();
     } else {
@@ -322,7 +331,7 @@ export default function Home() {
       if (e.button !== 0) return;
       const { x, y } = getSvgRelativeCoords(e);
       pushUndo(circles);
-      setEdit({ ...edit, drawing: { startX: x, startY: y } });
+      setEdit((prev) => ({ ...prev, drawing: { startX: x, startY: y } }));
     },
     [edit, mode, circles]
   );
@@ -331,7 +340,7 @@ export default function Home() {
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       if (edit.drawing === null) return;
       const { x, y } = getSvgRelativeCoords(e);
-      setEdit({ ...edit, lastMouse: { x, y } });
+      setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
     },
     [edit]
   );
@@ -346,11 +355,14 @@ export default function Home() {
       if (r > 1) {
         const centerX = (edit.drawing.startX + x) / 2;
         const centerY = (edit.drawing.startY + y) / 2;
-        setCircles([...circles, { id: Date.now(), x: centerX, y: centerY, r }]);
+        setCircles((prev) => [
+          ...prev,
+          { id: Date.now(), x: centerX, y: centerY, r },
+        ]);
       }
-      setEdit({ ...edit, drawing: null, lastMouse: null });
+      setEdit((prev) => ({ ...prev, drawing: null, lastMouse: null }));
     },
-    [edit, circles]
+    [edit]
   );
 
   const handleCircleMouseDown = useCallback(
@@ -361,11 +373,11 @@ export default function Home() {
         e as React.MouseEvent<SVGCircleElement, MouseEvent>
       );
       const circle = circles.find((c) => c.id === id)!;
-      setEdit({
-        ...edit,
+      setEdit((prev) => ({
+        ...prev,
         dragId: id,
         dragOffset: { dx: circle.x - x, dy: circle.y - y },
-      });
+      }));
     },
     [mode, circles, edit]
   );
@@ -377,8 +389,8 @@ export default function Home() {
         pushUndoIfNeeded(circles);
       }
       const { x, y } = getSvgRelativeCoords(e);
-      setCircles((circles) =>
-        circles.map((c) =>
+      setCircles((prev) =>
+        prev.map((c) =>
           c.id === edit.dragId
             ? { ...c, x: x + edit.dragOffset.dx, y: y + edit.dragOffset.dy }
             : c
@@ -389,7 +401,11 @@ export default function Home() {
   );
 
   const handleSvgDragEnd = useCallback(() => {
-    setEdit({ ...edit, dragId: null, dragOffset: { dx: 0, dy: 0 } });
+    setEdit((prev) => ({
+      ...prev,
+      dragId: null,
+      dragOffset: { dx: 0, dy: 0 },
+    }));
     isPushingUndo.current = false;
   }, [edit]);
 
@@ -398,17 +414,22 @@ export default function Home() {
       if (mode !== 'edit') return;
       e.preventDefault();
       pushUndo(circles);
-      setCircles((circles) => circles.filter((c) => c.id !== id));
+      setCircles((prev) => prev.filter((c) => c.id !== id));
     },
     [mode, circles]
   );
 
-  // --- useMemoで円の描画用データを最適化（例）---
+  // --- useMemoで円の描画用データを最適化（依存配列をhoverId等に限定）---
   const renderedCircles = useMemo(
     () =>
       circles.map((c) => {
         let handle = null;
-        if (edit.hoverId === c.id) {
+        // ホバー中かつリサイズ中でない円にのみハンドラを表示
+        if (
+          edit.hoverId === c.id &&
+          mode === 'edit' &&
+          (!edit.resizeId || edit.resizeId === c.id)
+        ) {
           const cx_px = (c.x / 100) * imgWidth;
           const cy_px = (c.y / 100) * imgHeight;
           const r_px = (c.r / 100) * ((imgWidth + imgHeight) / 2);
@@ -429,34 +450,48 @@ export default function Home() {
           const hx_px = cx_px + Math.cos(angleRad) * r_px;
           const hy_px = cy_px - Math.sin(angleRad) * r_px;
           const handleSizePx = 20;
+          // デバッグ用: ハンドル表示エリア（円全体）を透過赤で重ねて表示
           handle = (
-            <rect
-              x={hx_px - handleSizePx / 2}
-              y={hy_px - handleSizePx / 2}
-              width={handleSizePx}
-              height={handleSizePx}
-              fill='#039be5'
-              stroke='#fff'
-              strokeWidth={1}
-              style={{ cursor: 'ew-resize', pointerEvents: 'auto' }}
-              rx={0}
-              ry={0}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setEdit({
-                  ...edit,
-                  resizeId: c.id,
-                  resizeStart: { mx: e.clientX, my: e.clientY, r: c.r },
-                });
-              }}
-            />
+            <g key={c.id + '-handle'}>
+              {/* デバッグ用の透過赤circleは削除 */}
+              <rect
+                x={hx_px - handleSizePx / 2}
+                y={hy_px - handleSizePx / 2}
+                width={handleSizePx}
+                height={handleSizePx}
+                fill='#039be5'
+                stroke='#fff'
+                strokeWidth={1}
+                style={{ cursor: 'ew-resize', pointerEvents: 'auto' }}
+                rx={0}
+                ry={0}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setEdit((prev) => ({
+                    ...prev,
+                    resizeId: c.id,
+                    resizeStart: { mx: e.clientX, my: e.clientY, r: c.r },
+                  }));
+                }}
+              />
+            </g>
           );
         }
         return (
           <g
             key={c.id}
-            onMouseEnter={() => setEdit({ ...edit, hoverId: c.id })}
-            onMouseLeave={() => setEdit({ ...edit, hoverId: null })}
+            onMouseEnter={() => setEdit((prev) => ({ ...prev, hoverId: c.id }))}
+            onPointerOut={(e) => {
+              const currentTarget = e.currentTarget as Element;
+              const related = e.relatedTarget as Node | null;
+              if (!related || !currentTarget.contains(related)) {
+                setEdit((prev) => ({
+                  ...prev,
+                  hoverId: null,
+                  lastMouse: null,
+                }));
+              }
+            }}
           >
             <circle
               cx={`${c.x}%`}
@@ -476,7 +511,12 @@ export default function Home() {
                   : undefined
               }
               style={{
-                cursor: mode === 'edit' ? 'grab' : 'default',
+                cursor:
+                  mode === 'edit' && edit.hoverId === c.id && !edit.resizeId
+                    ? 'move' // 十字矢印
+                    : mode === 'edit'
+                    ? 'grab'
+                    : 'default',
                 filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
               }}
             />
@@ -484,7 +524,16 @@ export default function Home() {
           </g>
         );
       }),
-    [circles, edit, mode, handleCircleMouseDown, handleCircleRightClick]
+    [
+      circles,
+      edit.hoverId,
+      edit.lastMouse,
+      edit.resizeId,
+      edit.resizeStart,
+      mode,
+      handleCircleMouseDown,
+      handleCircleRightClick,
+    ]
   );
 
   // TransformWrapperのonZoomでズーム値を同期
@@ -602,13 +651,17 @@ export default function Home() {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  setEdit({ ...edit, lastMouse: { x, y } });
+                  setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
                 }
               }}
               onMouseUp={(e) => {
                 if (mode === 'edit') {
                   if (edit.resizeId !== null) {
-                    setEdit({ ...edit, resizeId: null, resizeStart: null });
+                    setEdit((prev) => ({
+                      ...prev,
+                      resizeId: null,
+                      resizeStart: null,
+                    }));
                     isPushingUndo.current = false;
                   } else if (edit.dragId !== null) handleSvgDragEnd();
                   else if (edit.drawing) handleSvgMouseUp(e);
@@ -616,8 +669,8 @@ export default function Home() {
               }}
               onMouseLeave={() => {
                 if (mode === 'edit') {
-                  setEdit({
-                    ...edit,
+                  setEdit((prev) => ({
+                    ...prev,
                     dragId: null,
                     dragOffset: { dx: 0, dy: 0 },
                     drawing: null,
@@ -625,9 +678,9 @@ export default function Home() {
                     resizeStart: null,
                     lastMouse: null,
                     hoverId: null,
-                  });
+                  }));
                 }
-                setEdit({ ...edit, hoverId: null }); // ホバー解除
+                setEdit((prev) => ({ ...prev, hoverId: null })); // ホバー解除
               }}
             >
               {/* 画像 */}
