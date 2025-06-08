@@ -241,6 +241,15 @@ export default function Home() {
   const [lastMouse, setLastMouse] = useState<{ x: number; y: number } | null>(
     null
   );
+  const [hoverId, setHoverId] = useState<number | null>(null); // 追加: ホバー中の円ID
+
+  // --- ハンドルドラッグ用 state ---
+  const [resizeId, setResizeId] = useState<number | null>(null); // リサイズ中の円ID
+  const [resizeStart, setResizeStart] = useState<{
+    mx: number;
+    my: number;
+    r: number;
+  } | null>(null); // リサイズ開始時のマウス座標と半径
 
   // 画像サイズ（px）
   const imgWidth = 800;
@@ -408,13 +417,39 @@ export default function Home() {
               }
               onMouseMove={(e) => {
                 if (mode === 'edit') {
-                  if (dragId !== null) handleSvgDragMove(e);
+                  if (resizeId !== null && resizeStart) {
+                    // --- リサイズ処理 ---
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const cx = circles.find((c) => c.id === resizeId)?.x ?? 0;
+                    const cy = circles.find((c) => c.id === resizeId)?.y ?? 0;
+                    // マウス座標（%）
+                    const mx = ((e.clientX - rect.left) / rect.width) * 100;
+                    const my = ((e.clientY - rect.top) / rect.height) * 100;
+                    // 中心→マウスの距離（%）
+                    const dx = mx - cx;
+                    const dy = my - cy;
+                    const newR = Math.sqrt(dx * dx + dy * dy);
+                    setCircles((prev) =>
+                      prev.map((c) =>
+                        c.id === resizeId ? { ...c, r: Math.max(newR, 1) } : c
+                      )
+                    );
+                  } else if (dragId !== null) handleSvgDragMove(e);
                   else if (drawing) handleSvgMouseMove(e);
+                }
+                if (hoverId !== null) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  setLastMouse({ x, y });
                 }
               }}
               onMouseUp={(e) => {
                 if (mode === 'edit') {
-                  if (dragId !== null) handleSvgDragEnd();
+                  if (resizeId !== null) {
+                    setResizeId(null);
+                    setResizeStart(null);
+                  } else if (dragId !== null) handleSvgDragEnd();
                   else if (drawing) handleSvgMouseUp(e);
                 }
               }}
@@ -423,7 +458,10 @@ export default function Home() {
                   setDrawing(null);
                   setDragId(null);
                   setLastMouse(null);
+                  setResizeId(null);
+                  setResizeStart(null);
                 }
+                setHoverId(null); // ホバー解除
               }}
             >
               {/* 画像 */}
@@ -442,31 +480,91 @@ export default function Home() {
                 preserveAspectRatio='xMidYMid slice'
               />
               {/* 既存の円 */}
-              {circles.map((c) => (
-                <circle
-                  key={c.id}
-                  cx={`${c.x}%`}
-                  cy={`${c.y}%`}
-                  r={`${c.r}%`}
-                  fill='rgba(33, 150, 243, 0.13)'
-                  stroke='#039be5'
-                  strokeWidth={2.5}
-                  onMouseDown={
-                    mode === 'edit'
-                      ? (e) => handleCircleMouseDown(c.id, e)
-                      : undefined
+              {circles.map((c) => {
+                let handle = null;
+                if (hoverId === c.id) {
+                  // 円中心(cx, cy), 半径r
+                  const cx_px = (c.x / 100) * imgWidth;
+                  const cy_px = (c.y / 100) * imgHeight;
+                  const r_px = (c.r / 100) * ((imgWidth + imgHeight) / 2); // 真円半径(px)
+                  // ハンドルの角度を決定
+                  let angleDeg = 45; // デフォルト右上
+                  if (lastMouse) {
+                    const mx_px = (lastMouse.x / 100) * imgWidth;
+                    const my_px = (lastMouse.y / 100) * imgHeight;
+                    const dx = mx_px - cx_px;
+                    const dy = my_px - cy_px;
+                    // 角度（0度=右, 反時計回り, 0-360度）
+                    let theta = Math.atan2(-dy, dx) * (180 / Math.PI); // y軸下向きなので-dy
+                    if (theta < 0) theta += 360;
+                    if (theta >= 0 && theta < 90) angleDeg = 45;
+                    else if (theta >= 90 && theta < 180) angleDeg = 135;
+                    else if (theta >= 180 && theta < 270) angleDeg = 225;
+                    else angleDeg = 315;
                   }
-                  onContextMenu={
-                    mode === 'edit'
-                      ? (e) => handleCircleRightClick(c.id, e)
-                      : undefined
-                  }
-                  style={{
-                    cursor: mode === 'edit' ? 'grab' : 'default',
-                    filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
-                  }}
-                />
-              ))}
+                  // 角度→ラジアン
+                  const angleRad = (angleDeg * Math.PI) / 180;
+                  // 円周上の交点（ピクセル）
+                  const hx_px = cx_px + Math.cos(angleRad) * r_px;
+                  const hy_px = cy_px - Math.sin(angleRad) * r_px; // SVG座標系に合わせて-sin
+                  // ハンドルサイズ（px）
+                  const handleSizePx = 20;
+                  handle = (
+                    <rect
+                      x={hx_px - handleSizePx / 2}
+                      y={hy_px - handleSizePx / 2}
+                      width={handleSizePx}
+                      height={handleSizePx}
+                      fill='#039be5'
+                      stroke='#fff'
+                      strokeWidth={1}
+                      style={{ cursor: 'ew-resize', pointerEvents: 'auto' }}
+                      rx={0}
+                      ry={0}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setResizeId(c.id);
+                        setResizeStart({
+                          mx: e.clientX,
+                          my: e.clientY,
+                          r: c.r,
+                        });
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <g
+                    key={c.id}
+                    onMouseEnter={() => setHoverId(c.id)}
+                    onMouseLeave={() => setHoverId(null)}
+                  >
+                    <circle
+                      cx={`${c.x}%`}
+                      cy={`${c.y}%`}
+                      r={`${c.r}%`}
+                      fill='rgba(33, 150, 243, 0.13)'
+                      stroke='#039be5'
+                      strokeWidth={2.5}
+                      onMouseDown={
+                        mode === 'edit' && !resizeId
+                          ? (e) => handleCircleMouseDown(c.id, e)
+                          : undefined
+                      }
+                      onContextMenu={
+                        mode === 'edit'
+                          ? (e) => handleCircleRightClick(c.id, e)
+                          : undefined
+                      }
+                      style={{
+                        cursor: mode === 'edit' ? 'grab' : 'default',
+                        filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
+                      }}
+                    />
+                    {handle}
+                  </g>
+                );
+              })}
               {/* 描画中の円プレビュー */}
               {mode === 'edit' &&
                 drawing &&
