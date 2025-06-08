@@ -280,6 +280,33 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mode, undoStack]);
 
+  // SVG座標変換の共通関数
+  const getSvgRelativeCoords = (
+    e: React.MouseEvent<SVGSVGElement | SVGCircleElement, MouseEvent>,
+    svgRect?: DOMRect
+  ) => {
+    let rect: DOMRect;
+    if (svgRect) {
+      rect = svgRect;
+    } else if ('ownerSVGElement' in e.target && e.target.ownerSVGElement) {
+      rect = (
+        e.target as SVGCircleElement
+      ).ownerSVGElement!.getBoundingClientRect();
+    } else if ('getBoundingClientRect' in e.target) {
+      rect = (e.target as SVGSVGElement).getBoundingClientRect();
+    } else {
+      throw new Error('SVG rect not found');
+    }
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    return { x, y };
+  };
+  // Undo pushの共通関数
+  const pushUndoIfNeeded = (prevCircles: Circle[]) => {
+    pushUndo(prevCircles);
+    isPushingUndo.current = true;
+  };
+
   // --- 編集操作時にUndo履歴をpush ---
   // 円追加
   const handleSvgMouseDown = (
@@ -287,9 +314,7 @@ export default function Home() {
   ) => {
     if (mode !== 'edit') return;
     if (e.button !== 0) return; // 左クリックのみ
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const { x, y } = getSvgRelativeCoords(e);
     pushUndo(circles);
     setDrawing({ startX: x, startY: y });
   };
@@ -297,16 +322,12 @@ export default function Home() {
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
   ) => {
     if (!drawing) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const { x, y } = getSvgRelativeCoords(e);
     setLastMouse({ x, y });
   };
   const handleSvgMouseUp = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (!drawing) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const { x, y } = getSvgRelativeCoords(e);
     // 直径の端と端
     const dx = x - drawing.startX;
     const dy = y - drawing.startY;
@@ -325,11 +346,9 @@ export default function Home() {
   const handleCircleMouseDown = (id: number, e: React.MouseEvent) => {
     if (mode !== 'edit') return;
     e.stopPropagation();
-    const rect = (
-      e.target as SVGCircleElement
-    ).ownerSVGElement!.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const { x, y } = getSvgRelativeCoords(
+      e as React.MouseEvent<SVGCircleElement, MouseEvent>
+    );
     const circle = circles.find((c) => c.id === id)!;
     setDragId(id);
     setDragOffset({ dx: circle.x - x, dy: circle.y - y });
@@ -340,12 +359,9 @@ export default function Home() {
   ) => {
     if (dragId === null) return;
     if (!isPushingUndo.current) {
-      pushUndo(circles);
-      isPushingUndo.current = true;
+      pushUndoIfNeeded(circles);
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const { x, y } = getSvgRelativeCoords(e);
     setCircles((circles) =>
       circles.map((c) =>
         c.id === dragId
