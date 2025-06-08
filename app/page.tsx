@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 
 // 円の型
@@ -299,82 +299,177 @@ export default function Home() {
 
   // --- 編集操作時にUndo履歴をpush ---
   // 円追加
-  const handleSvgMouseDown = (
-    e: React.MouseEvent<SVGSVGElement, MouseEvent>
-  ) => {
-    if (edit.drawing !== null) return;
-    if (mode !== 'edit') return;
-    if (e.button !== 0) return; // 左クリックのみ
-    const { x, y } = getSvgRelativeCoords(e);
-    pushUndo(circles);
-    setEdit({ ...edit, drawing: { startX: x, startY: y } });
-  };
-  const handleSvgMouseMove = (
-    e: React.MouseEvent<SVGSVGElement, MouseEvent>
-  ) => {
-    if (edit.drawing === null) return;
-    const { x, y } = getSvgRelativeCoords(e);
-    setEdit({ ...edit, lastMouse: { x, y } });
-  };
-  const handleSvgMouseUp = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (edit.drawing === null) return;
-    const { x, y } = getSvgRelativeCoords(e);
-    // 直径の端と端
-    const dx = x - edit.drawing.startX;
-    const dy = y - edit.drawing.startY;
-    const r = Math.sqrt(dx * dx + dy * dy) / 2;
-    if (r > 1) {
-      // 中心座標を直径の中点に
-      const centerX = (edit.drawing.startX + x) / 2;
-      const centerY = (edit.drawing.startY + y) / 2;
-      setCircles([...circles, { id: Date.now(), x: centerX, y: centerY, r }]);
-    }
-    setEdit({ ...edit, drawing: null, lastMouse: null });
-  };
+  const handleSvgMouseDown = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.drawing !== null) return;
+      if (mode !== 'edit') return;
+      if (e.button !== 0) return;
+      const { x, y } = getSvgRelativeCoords(e);
+      pushUndo(circles);
+      setEdit({ ...edit, drawing: { startX: x, startY: y } });
+    },
+    [edit, mode, circles]
+  );
 
-  // 円のドラッグ開始
-  const handleCircleMouseDown = (id: number, e: React.MouseEvent) => {
-    if (mode !== 'edit') return;
-    e.stopPropagation();
-    const { x, y } = getSvgRelativeCoords(
-      e as React.MouseEvent<SVGCircleElement, MouseEvent>
-    );
-    const circle = circles.find((c) => c.id === id)!;
-    setEdit({
-      ...edit,
-      dragId: id,
-      dragOffset: { dx: circle.x - x, dy: circle.y - y },
-    });
-  };
-  // 円のドラッグ移動
-  const handleSvgDragMove = (
-    e: React.MouseEvent<SVGSVGElement, MouseEvent>
-  ) => {
-    if (edit.dragId === null) return;
-    if (!isPushingUndo.current) {
-      pushUndoIfNeeded(circles);
-    }
-    const { x, y } = getSvgRelativeCoords(e);
-    setCircles((circles) =>
-      circles.map((c) =>
-        c.id === edit.dragId
-          ? { ...c, x: x + edit.dragOffset.dx, y: y + edit.dragOffset.dy }
-          : c
-      )
-    );
-  };
-  // 円のドラッグ終了
-  const handleSvgDragEnd = () => {
+  const handleSvgMouseMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.drawing === null) return;
+      const { x, y } = getSvgRelativeCoords(e);
+      setEdit({ ...edit, lastMouse: { x, y } });
+    },
+    [edit]
+  );
+
+  const handleSvgMouseUp = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.drawing === null) return;
+      const { x, y } = getSvgRelativeCoords(e);
+      const dx = x - edit.drawing.startX;
+      const dy = y - edit.drawing.startY;
+      const r = Math.sqrt(dx * dx + dy * dy) / 2;
+      if (r > 1) {
+        const centerX = (edit.drawing.startX + x) / 2;
+        const centerY = (edit.drawing.startY + y) / 2;
+        setCircles([...circles, { id: Date.now(), x: centerX, y: centerY, r }]);
+      }
+      setEdit({ ...edit, drawing: null, lastMouse: null });
+    },
+    [edit, circles]
+  );
+
+  const handleCircleMouseDown = useCallback(
+    (id: number, e: React.MouseEvent) => {
+      if (mode !== 'edit') return;
+      e.stopPropagation();
+      const { x, y } = getSvgRelativeCoords(
+        e as React.MouseEvent<SVGCircleElement, MouseEvent>
+      );
+      const circle = circles.find((c) => c.id === id)!;
+      setEdit({
+        ...edit,
+        dragId: id,
+        dragOffset: { dx: circle.x - x, dy: circle.y - y },
+      });
+    },
+    [mode, circles, edit]
+  );
+
+  const handleSvgDragMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.dragId === null) return;
+      if (!isPushingUndo.current) {
+        pushUndoIfNeeded(circles);
+      }
+      const { x, y } = getSvgRelativeCoords(e);
+      setCircles((circles) =>
+        circles.map((c) =>
+          c.id === edit.dragId
+            ? { ...c, x: x + edit.dragOffset.dx, y: y + edit.dragOffset.dy }
+            : c
+        )
+      );
+    },
+    [edit, circles]
+  );
+
+  const handleSvgDragEnd = useCallback(() => {
     setEdit({ ...edit, dragId: null, dragOffset: { dx: 0, dy: 0 } });
     isPushingUndo.current = false;
-  };
-  // 円の削除
-  const handleCircleRightClick = (id: number, e: React.MouseEvent) => {
-    if (mode !== 'edit') return;
-    e.preventDefault();
-    pushUndo(circles);
-    setCircles((circles) => circles.filter((c) => c.id !== id));
-  };
+  }, [edit]);
+
+  const handleCircleRightClick = useCallback(
+    (id: number, e: React.MouseEvent) => {
+      if (mode !== 'edit') return;
+      e.preventDefault();
+      pushUndo(circles);
+      setCircles((circles) => circles.filter((c) => c.id !== id));
+    },
+    [mode, circles]
+  );
+
+  // --- useMemoで円の描画用データを最適化（例）---
+  const renderedCircles = useMemo(
+    () =>
+      circles.map((c) => {
+        let handle = null;
+        if (edit.hoverId === c.id) {
+          const cx_px = (c.x / 100) * imgWidth;
+          const cy_px = (c.y / 100) * imgHeight;
+          const r_px = (c.r / 100) * ((imgWidth + imgHeight) / 2);
+          let angleDeg = 45;
+          if (edit.lastMouse) {
+            const mx_px = (edit.lastMouse.x / 100) * imgWidth;
+            const my_px = (edit.lastMouse.y / 100) * imgHeight;
+            const dx = mx_px - cx_px;
+            const dy = my_px - cy_px;
+            let theta = Math.atan2(-dy, dx) * (180 / Math.PI);
+            if (theta < 0) theta += 360;
+            if (theta >= 0 && theta < 90) angleDeg = 45;
+            else if (theta >= 90 && theta < 180) angleDeg = 135;
+            else if (theta >= 180 && theta < 270) angleDeg = 225;
+            else angleDeg = 315;
+          }
+          const angleRad = (angleDeg * Math.PI) / 180;
+          const hx_px = cx_px + Math.cos(angleRad) * r_px;
+          const hy_px = cy_px - Math.sin(angleRad) * r_px;
+          const handleSizePx = 20;
+          handle = (
+            <rect
+              x={hx_px - handleSizePx / 2}
+              y={hy_px - handleSizePx / 2}
+              width={handleSizePx}
+              height={handleSizePx}
+              fill='#039be5'
+              stroke='#fff'
+              strokeWidth={1}
+              style={{ cursor: 'ew-resize', pointerEvents: 'auto' }}
+              rx={0}
+              ry={0}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setEdit({
+                  ...edit,
+                  resizeId: c.id,
+                  resizeStart: { mx: e.clientX, my: e.clientY, r: c.r },
+                });
+              }}
+            />
+          );
+        }
+        return (
+          <g
+            key={c.id}
+            onMouseEnter={() => setEdit({ ...edit, hoverId: c.id })}
+            onMouseLeave={() => setEdit({ ...edit, hoverId: null })}
+          >
+            <circle
+              cx={`${c.x}%`}
+              cy={`${c.y}%`}
+              r={`${c.r}%`}
+              fill='rgba(33, 150, 243, 0.13)'
+              stroke='#039be5'
+              strokeWidth={2.5}
+              onMouseDown={
+                mode === 'edit' && !edit.resizeId
+                  ? (e) => handleCircleMouseDown(c.id, e)
+                  : undefined
+              }
+              onContextMenu={
+                mode === 'edit'
+                  ? (e) => handleCircleRightClick(c.id, e)
+                  : undefined
+              }
+              style={{
+                cursor: mode === 'edit' ? 'grab' : 'default',
+                filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
+              }}
+            />
+            {handle}
+          </g>
+        );
+      }),
+    [circles, edit, mode, handleCircleMouseDown, handleCircleRightClick]
+  );
 
   // TransformWrapperのonZoomでズーム値を同期
   const handleZoom = (ref: any) => {
@@ -535,90 +630,7 @@ export default function Home() {
                 preserveAspectRatio='xMidYMid slice'
               />
               {/* 既存の円 */}
-              {circles.map((c) => {
-                let handle = null;
-                if (edit.hoverId === c.id) {
-                  // 円中心(cx, cy), 半径r
-                  const cx_px = (c.x / 100) * imgWidth;
-                  const cy_px = (c.y / 100) * imgHeight;
-                  const r_px = (c.r / 100) * ((imgWidth + imgHeight) / 2); // 真円半径(px)
-                  // ハンドルの角度を決定
-                  let angleDeg = 45; // デフォルト右上
-                  if (edit.lastMouse) {
-                    const mx_px = (edit.lastMouse.x / 100) * imgWidth;
-                    const my_px = (edit.lastMouse.y / 100) * imgHeight;
-                    const dx = mx_px - cx_px;
-                    const dy = my_px - cy_px;
-                    // 角度（0度=右, 反時計回り, 0-360度）
-                    let theta = Math.atan2(-dy, dx) * (180 / Math.PI); // y軸下向きなので-dy
-                    if (theta < 0) theta += 360;
-                    if (theta >= 0 && theta < 90) angleDeg = 45;
-                    else if (theta >= 90 && theta < 180) angleDeg = 135;
-                    else if (theta >= 180 && theta < 270) angleDeg = 225;
-                    else angleDeg = 315;
-                  }
-                  // 角度→ラジアン
-                  const angleRad = (angleDeg * Math.PI) / 180;
-                  // 円周上の交点（ピクセル）
-                  const hx_px = cx_px + Math.cos(angleRad) * r_px;
-                  const hy_px = cy_px - Math.sin(angleRad) * r_px; // SVG座標系に合わせて-sin
-                  // ハンドルサイズ（px）
-                  const handleSizePx = 20;
-                  handle = (
-                    <rect
-                      x={hx_px - handleSizePx / 2}
-                      y={hy_px - handleSizePx / 2}
-                      width={handleSizePx}
-                      height={handleSizePx}
-                      fill='#039be5'
-                      stroke='#fff'
-                      strokeWidth={1}
-                      style={{ cursor: 'ew-resize', pointerEvents: 'auto' }}
-                      rx={0}
-                      ry={0}
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        setEdit({
-                          ...edit,
-                          resizeId: c.id,
-                          resizeStart: { mx: e.clientX, my: e.clientY, r: c.r },
-                        });
-                      }}
-                    />
-                  );
-                }
-                return (
-                  <g
-                    key={c.id}
-                    onMouseEnter={() => setEdit({ ...edit, hoverId: c.id })}
-                    onMouseLeave={() => setEdit({ ...edit, hoverId: null })}
-                  >
-                    <circle
-                      cx={`${c.x}%`}
-                      cy={`${c.y}%`}
-                      r={`${c.r}%`}
-                      fill='rgba(33, 150, 243, 0.13)'
-                      stroke='#039be5'
-                      strokeWidth={2.5}
-                      onMouseDown={
-                        mode === 'edit' && !edit.resizeId
-                          ? (e) => handleCircleMouseDown(c.id, e)
-                          : undefined
-                      }
-                      onContextMenu={
-                        mode === 'edit'
-                          ? (e) => handleCircleRightClick(c.id, e)
-                          : undefined
-                      }
-                      style={{
-                        cursor: mode === 'edit' ? 'grab' : 'default',
-                        filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
-                      }}
-                    />
-                    {handle}
-                  </g>
-                );
-              })}
+              {renderedCircles}
               {/* 描画中の円プレビュー */}
               {mode === 'edit' &&
                 edit.drawing &&
