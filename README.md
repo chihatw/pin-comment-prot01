@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ピン・コメント機能付き画像ビューア
 
-## Getting Started
+このアプリは、画像上に「ピン」を立ててコメントや注釈を付けることができる Next.js 製のサンプルです。
 
-First, run the development server:
+## 主な機能
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **画像のズーム・パン**
+  - スライダーやマウス操作で画像の拡大・縮小、ドラッグによる移動が可能です。
+- **ピン（円）の追加・移動・削除**
+  - 「編集モード」に切り替えると、画像上をドラッグして円（ピン）を描画できます。
+  - 追加した円はドラッグで移動できます。
+  - 円を右クリックで削除できます。
+- **モード切替**
+  - 「表示モード」ではピンの編集ができず、画像の閲覧・ズーム・パンのみ可能です。
+  - 「編集モード」ではピンの追加・移動・削除ができます。
+- **リセットボタン**
+  - 画像の表示位置・ズームを初期状態に戻せます。
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 使い方
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. 開発サーバーを起動
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   npm run dev
+   # または
+   yarn dev
+   # または
+   pnpm dev
+   # または
+   bun
+   ```
 
-## Learn More
+2. ブラウザで [http://localhost:3000](http://localhost:3000) を開く
 
-To learn more about Next.js, take a look at the following resources:
+3. 画面上部のスイッチで「表示モード」「編集モード」を切り替え
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. 編集モードで画像上をドラッグしてピンを追加、ピンをドラッグで移動、右クリックで削除
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 技術スタック
 
-## Deploy on Vercel
+- Next.js
+- TypeScript
+- react-zoom-pan-pinch（ズーム・パン制御）
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## デプロイ
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[Vercel](https://vercel.com/) などで簡単にデプロイできます。
+
+---
+
+ご意見・ご要望は Issue までどうぞ。
