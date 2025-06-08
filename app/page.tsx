@@ -217,16 +217,6 @@ export default function Home() {
   // Undo履歴（最大10件）
   const [undoStack, setUndoStack] = useState<Circle[][]>([]);
   const isPushingUndo = useRef(false); // 無限ループ防止
-  const [dragId, setDragId] = useState<number | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number }>({
-    dx: 0,
-    dy: 0,
-  });
-  const [drawing, setDrawing] = useState<{
-    startX: number;
-    startY: number;
-  } | null>(null);
-  const [mode, setMode] = useState<'view' | 'edit'>('view'); // 追加: モード
   const [zoom, setZoom] = useState(1);
   const [setTransformApi, setSetTransformApi] = useState<
     | null
@@ -241,18 +231,18 @@ export default function Home() {
   const [getTransformApi, setGetTransformApi] = useState<
     null | (() => { positionX: number; positionY: number; scale: number })
   >(null);
-  const [lastMouse, setLastMouse] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const [hoverId, setHoverId] = useState<number | null>(null); // 追加: ホバー中の円ID
-
-  // --- ハンドルドラッグ用 state ---
-  const [resizeId, setResizeId] = useState<number | null>(null); // リサイズ中の円ID
-  const [resizeStart, setResizeStart] = useState<{
-    mx: number;
-    my: number;
-    r: number;
-  } | null>(null); // リサイズ開始時のマウス座標と半径
+  // --- 編集用状態はuseStateでまとめて管理 ---
+  const [edit, setEdit] = useState({
+    dragId: null as number | null,
+    dragOffset: { dx: 0, dy: 0 },
+    drawing: null as { startX: number; startY: number } | null,
+    resizeId: null as number | null,
+    resizeStart: null as { mx: number; my: number; r: number } | null,
+    lastMouse: null as { x: number; y: number } | null,
+    hoverId: null as number | null,
+  });
+  // --- モード切替はuseStateのまま維持 ---
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
 
   // 画像サイズ（px）
   const imgWidth = 800;
@@ -271,14 +261,14 @@ export default function Home() {
   // --- Undo（ESCキー） ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (mode === 'edit' && e.key === 'Escape' && undoStack.length > 0) {
+      if (edit.drawing === null && e.key === 'Escape' && undoStack.length > 0) {
         setCircles(undoStack[undoStack.length - 1]);
         setUndoStack((stack) => stack.slice(0, -1));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, undoStack]);
+  }, [undoStack, edit.drawing]);
 
   // SVG座標変換の共通関数
   const getSvgRelativeCoords = (
@@ -312,34 +302,34 @@ export default function Home() {
   const handleSvgMouseDown = (
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
   ) => {
+    if (edit.drawing !== null) return;
     if (mode !== 'edit') return;
     if (e.button !== 0) return; // 左クリックのみ
     const { x, y } = getSvgRelativeCoords(e);
     pushUndo(circles);
-    setDrawing({ startX: x, startY: y });
+    setEdit({ ...edit, drawing: { startX: x, startY: y } });
   };
   const handleSvgMouseMove = (
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
   ) => {
-    if (!drawing) return;
+    if (edit.drawing === null) return;
     const { x, y } = getSvgRelativeCoords(e);
-    setLastMouse({ x, y });
+    setEdit({ ...edit, lastMouse: { x, y } });
   };
   const handleSvgMouseUp = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (!drawing) return;
+    if (edit.drawing === null) return;
     const { x, y } = getSvgRelativeCoords(e);
     // 直径の端と端
-    const dx = x - drawing.startX;
-    const dy = y - drawing.startY;
+    const dx = x - edit.drawing.startX;
+    const dy = y - edit.drawing.startY;
     const r = Math.sqrt(dx * dx + dy * dy) / 2;
     if (r > 1) {
       // 中心座標を直径の中点に
-      const centerX = (drawing.startX + x) / 2;
-      const centerY = (drawing.startY + y) / 2;
+      const centerX = (edit.drawing.startX + x) / 2;
+      const centerY = (edit.drawing.startY + y) / 2;
       setCircles([...circles, { id: Date.now(), x: centerX, y: centerY, r }]);
     }
-    setDrawing(null);
-    setLastMouse(null);
+    setEdit({ ...edit, drawing: null, lastMouse: null });
   };
 
   // 円のドラッグ開始
@@ -350,29 +340,32 @@ export default function Home() {
       e as React.MouseEvent<SVGCircleElement, MouseEvent>
     );
     const circle = circles.find((c) => c.id === id)!;
-    setDragId(id);
-    setDragOffset({ dx: circle.x - x, dy: circle.y - y });
+    setEdit({
+      ...edit,
+      dragId: id,
+      dragOffset: { dx: circle.x - x, dy: circle.y - y },
+    });
   };
   // 円のドラッグ移動
   const handleSvgDragMove = (
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
   ) => {
-    if (dragId === null) return;
+    if (edit.dragId === null) return;
     if (!isPushingUndo.current) {
       pushUndoIfNeeded(circles);
     }
     const { x, y } = getSvgRelativeCoords(e);
     setCircles((circles) =>
       circles.map((c) =>
-        c.id === dragId
-          ? { ...c, x: x + dragOffset.dx, y: y + dragOffset.dy }
+        c.id === edit.dragId
+          ? { ...c, x: x + edit.dragOffset.dx, y: y + edit.dragOffset.dy }
           : c
       )
     );
   };
   // 円のドラッグ終了
   const handleSvgDragEnd = () => {
-    setDragId(null);
+    setEdit({ ...edit, dragId: null, dragOffset: { dx: 0, dy: 0 } });
     isPushingUndo.current = false;
   };
   // 円の削除
@@ -452,29 +445,31 @@ export default function Home() {
                 zIndex: 2,
                 cursor:
                   mode === 'edit'
-                    ? drawing
+                    ? edit.drawing
                       ? 'crosshair'
-                      : dragId
+                      : edit.dragId
                       ? 'grabbing'
                       : 'pointer'
                     : 'grab',
               }}
               onMouseDown={
-                mode === 'edit' && dragId === null
+                mode === 'edit' && edit.dragId === null
                   ? handleSvgMouseDown
                   : undefined
               }
               onMouseMove={(e) => {
                 if (mode === 'edit') {
-                  if (resizeId !== null && resizeStart) {
+                  if (edit.resizeId !== null && edit.resizeStart) {
                     if (!isPushingUndo.current) {
                       pushUndo(circles);
                       isPushingUndo.current = true;
                     }
                     // --- リサイズ処理 ---
                     const rect = e.currentTarget.getBoundingClientRect();
-                    const cx = circles.find((c) => c.id === resizeId)?.x ?? 0;
-                    const cy = circles.find((c) => c.id === resizeId)?.y ?? 0;
+                    const cx =
+                      circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
+                    const cy =
+                      circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
                     // マウス座標（%）
                     const mx = ((e.clientX - rect.left) / rect.width) * 100;
                     const my = ((e.clientY - rect.top) / rect.height) * 100;
@@ -484,38 +479,44 @@ export default function Home() {
                     const newR = Math.sqrt(dx * dx + dy * dy);
                     setCircles((prev) =>
                       prev.map((c) =>
-                        c.id === resizeId ? { ...c, r: Math.max(newR, 1) } : c
+                        c.id === edit.resizeId
+                          ? { ...c, r: Math.max(newR, 1) }
+                          : c
                       )
                     );
-                  } else if (dragId !== null) handleSvgDragMove(e);
-                  else if (drawing) handleSvgMouseMove(e);
+                  } else if (edit.dragId !== null) handleSvgDragMove(e);
+                  else if (edit.drawing) handleSvgMouseMove(e);
                 }
-                if (hoverId !== null) {
+                if (edit.hoverId !== null) {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  setLastMouse({ x, y });
+                  setEdit({ ...edit, lastMouse: { x, y } });
                 }
               }}
               onMouseUp={(e) => {
                 if (mode === 'edit') {
-                  if (resizeId !== null) {
-                    setResizeId(null);
-                    setResizeStart(null);
+                  if (edit.resizeId !== null) {
+                    setEdit({ ...edit, resizeId: null, resizeStart: null });
                     isPushingUndo.current = false;
-                  } else if (dragId !== null) handleSvgDragEnd();
-                  else if (drawing) handleSvgMouseUp(e);
+                  } else if (edit.dragId !== null) handleSvgDragEnd();
+                  else if (edit.drawing) handleSvgMouseUp(e);
                 }
               }}
               onMouseLeave={() => {
                 if (mode === 'edit') {
-                  setDrawing(null);
-                  setDragId(null);
-                  setLastMouse(null);
-                  setResizeId(null);
-                  setResizeStart(null);
+                  setEdit({
+                    ...edit,
+                    dragId: null,
+                    dragOffset: { dx: 0, dy: 0 },
+                    drawing: null,
+                    resizeId: null,
+                    resizeStart: null,
+                    lastMouse: null,
+                    hoverId: null,
+                  });
                 }
-                setHoverId(null); // ホバー解除
+                setEdit({ ...edit, hoverId: null }); // ホバー解除
               }}
             >
               {/* 画像 */}
@@ -536,16 +537,16 @@ export default function Home() {
               {/* 既存の円 */}
               {circles.map((c) => {
                 let handle = null;
-                if (hoverId === c.id) {
+                if (edit.hoverId === c.id) {
                   // 円中心(cx, cy), 半径r
                   const cx_px = (c.x / 100) * imgWidth;
                   const cy_px = (c.y / 100) * imgHeight;
                   const r_px = (c.r / 100) * ((imgWidth + imgHeight) / 2); // 真円半径(px)
                   // ハンドルの角度を決定
                   let angleDeg = 45; // デフォルト右上
-                  if (lastMouse) {
-                    const mx_px = (lastMouse.x / 100) * imgWidth;
-                    const my_px = (lastMouse.y / 100) * imgHeight;
+                  if (edit.lastMouse) {
+                    const mx_px = (edit.lastMouse.x / 100) * imgWidth;
+                    const my_px = (edit.lastMouse.y / 100) * imgHeight;
                     const dx = mx_px - cx_px;
                     const dy = my_px - cy_px;
                     // 角度（0度=右, 反時計回り, 0-360度）
@@ -577,11 +578,10 @@ export default function Home() {
                       ry={0}
                       onMouseDown={(e) => {
                         e.stopPropagation();
-                        setResizeId(c.id);
-                        setResizeStart({
-                          mx: e.clientX,
-                          my: e.clientY,
-                          r: c.r,
+                        setEdit({
+                          ...edit,
+                          resizeId: c.id,
+                          resizeStart: { mx: e.clientX, my: e.clientY, r: c.r },
                         });
                       }}
                     />
@@ -590,8 +590,8 @@ export default function Home() {
                 return (
                   <g
                     key={c.id}
-                    onMouseEnter={() => setHoverId(c.id)}
-                    onMouseLeave={() => setHoverId(null)}
+                    onMouseEnter={() => setEdit({ ...edit, hoverId: c.id })}
+                    onMouseLeave={() => setEdit({ ...edit, hoverId: null })}
                   >
                     <circle
                       cx={`${c.x}%`}
@@ -601,7 +601,7 @@ export default function Home() {
                       stroke='#039be5'
                       strokeWidth={2.5}
                       onMouseDown={
-                        mode === 'edit' && !resizeId
+                        mode === 'edit' && !edit.resizeId
                           ? (e) => handleCircleMouseDown(c.id, e)
                           : undefined
                       }
@@ -621,17 +621,19 @@ export default function Home() {
               })}
               {/* 描画中の円プレビュー */}
               {mode === 'edit' &&
-                drawing &&
-                lastMouse &&
+                edit.drawing &&
+                edit.lastMouse &&
                 (() => {
                   // 直径の端と端
-                  const dx = lastMouse.x - drawing.startX;
-                  const dy = lastMouse.y - drawing.startY;
+                  const dx = edit.lastMouse.x - edit.drawing.startX;
+                  const dy = edit.lastMouse.y - edit.drawing.startY;
                   const r = Math.sqrt(dx * dx + dy * dy) / 2;
                   if (r > 0.5) {
                     // 中心座標を直径の中点に
-                    const centerX = (drawing.startX + lastMouse.x) / 2;
-                    const centerY = (drawing.startY + lastMouse.y) / 2;
+                    const centerX =
+                      (edit.drawing.startX + edit.lastMouse.x) / 2;
+                    const centerY =
+                      (edit.drawing.startY + edit.lastMouse.y) / 2;
                     return (
                       <circle
                         cx={`${centerX}%`}
