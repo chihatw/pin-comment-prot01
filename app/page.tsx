@@ -2,6 +2,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CircleCanvas from './CircleCanvas';
 import CommentPanel from './CommentPanel';
+import {
+  getCircleLabelPosition,
+  getSvgRelativeCoords,
+  pushUndo as pushUndoUtil,
+} from './utils';
 
 // 円の型
 interface Circle {
@@ -44,11 +49,7 @@ export default function Home() {
 
   // Undo履歴に現在の円リストを追加（最大10件）
   const pushUndo = useCallback((prevCircles: Circle[]) => {
-    setUndoStack((prev) => {
-      const newStack = [...prev, prevCircles.map((c) => ({ ...c }))];
-      if (newStack.length > 10) newStack.shift();
-      return newStack;
-    });
+    setUndoStack((prev) => pushUndoUtil(prev, prevCircles, 10));
   }, []);
 
   // --- Undo（ESCキー） ---
@@ -63,27 +64,6 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undoStack, edit.drawing]);
 
-  // SVG座標を%で取得するユーティリティ
-  const getSvgRelativeCoords = (
-    e: React.MouseEvent<SVGSVGElement | SVGCircleElement, MouseEvent>,
-    svgRect?: DOMRect
-  ): { x: number; y: number } => {
-    let rect: DOMRect;
-    if (svgRect) {
-      rect = svgRect;
-    } else if ('ownerSVGElement' in e.target && e.target.ownerSVGElement) {
-      rect = (
-        e.target as SVGCircleElement
-      ).ownerSVGElement!.getBoundingClientRect();
-    } else if ('getBoundingClientRect' in e.target) {
-      rect = (e.target as SVGSVGElement).getBoundingClientRect();
-    } else {
-      throw new Error('SVG rect not found');
-    }
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    return { x, y };
-  };
   // Undo pushの共通関数
   const pushUndoIfNeeded = (prevCircles: Circle[]) => {
     pushUndo(prevCircles);
@@ -383,10 +363,13 @@ export default function Home() {
               // 半径(px)（楕円補正なし: 画像の短辺基準で）
               const r = ((c.r / 100) * Math.min(imgWidth, imgHeight)) / 2;
               // 左上方向（-135度, SVG座標系でy軸下向きなので+45度）
-              const angleRad = (-135 * Math.PI) / 180;
-              const labelR = r + 12; // 必ず中心から半径+12px
-              const labelX = cx + Math.cos(angleRad) * labelR;
-              const labelY = cy + Math.sin(angleRad) * labelR;
+              const { x: labelX, y: labelY } = getCircleLabelPosition(
+                cx,
+                cy,
+                r,
+                -135,
+                12
+              );
               return (
                 <text
                   x={labelX}
