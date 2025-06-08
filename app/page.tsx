@@ -238,6 +238,9 @@ export default function Home() {
   const [getTransformApi, setGetTransformApi] = useState<
     null | (() => { positionX: number; positionY: number; scale: number })
   >(null);
+  const [lastMouse, setLastMouse] = useState<{ x: number; y: number } | null>(
+    null
+  );
 
   // 画像サイズ（px）
   const imgWidth = 800;
@@ -258,23 +261,28 @@ export default function Home() {
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
   ) => {
     if (!drawing) return;
-    // 描画中はプレビュー
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setLastMouse({ x, y });
   };
   const handleSvgMouseUp = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (!drawing) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
+    // 直径の端と端
     const dx = x - drawing.startX;
     const dy = y - drawing.startY;
-    const r = Math.sqrt(dx * dx + dy * dy);
-    if (r > 2) {
-      setCircles([
-        ...circles,
-        { id: Date.now(), x: drawing.startX, y: drawing.startY, r },
-      ]);
+    const r = Math.sqrt(dx * dx + dy * dy) / 2;
+    if (r > 1) {
+      // 中心座標を直径の中点に
+      const centerX = (drawing.startX + x) / 2;
+      const centerY = (drawing.startY + y) / 2;
+      setCircles([...circles, { id: Date.now(), x: centerX, y: centerY, r }]);
     }
     setDrawing(null);
+    setLastMouse(null);
   };
 
   // 円のドラッグ開始
@@ -414,9 +422,25 @@ export default function Home() {
                 if (mode === 'edit') {
                   setDrawing(null);
                   setDragId(null);
+                  setLastMouse(null);
                 }
               }}
             >
+              {/* 画像 */}
+              <image
+                href='/sample.jpg'
+                width={imgWidth}
+                height={imgHeight}
+                style={{
+                  display: 'block',
+                  width: imgWidth,
+                  height: imgHeight,
+                  userSelect: 'none',
+                  borderRadius: 16,
+                  boxShadow: '0 2px 12px #b3e5fc33',
+                }}
+                preserveAspectRatio='xMidYMid slice'
+              />
               {/* 既存の円 */}
               {circles.map((c) => (
                 <circle
@@ -443,23 +467,35 @@ export default function Home() {
                   }}
                 />
               ))}
-              {/* 描画中の円プレビュー（省略可） */}
+              {/* 描画中の円プレビュー */}
+              {mode === 'edit' &&
+                drawing &&
+                lastMouse &&
+                (() => {
+                  // 直径の端と端
+                  const dx = lastMouse.x - drawing.startX;
+                  const dy = lastMouse.y - drawing.startY;
+                  const r = Math.sqrt(dx * dx + dy * dy) / 2;
+                  if (r > 0.5) {
+                    // 中心座標を直径の中点に
+                    const centerX = (drawing.startX + lastMouse.x) / 2;
+                    const centerY = (drawing.startY + lastMouse.y) / 2;
+                    return (
+                      <circle
+                        cx={`${centerX}%`}
+                        cy={`${centerY}%`}
+                        r={`${r}%`}
+                        fill='rgba(33, 150, 243, 0.09)'
+                        stroke='#4fc3f7'
+                        strokeDasharray='4 2'
+                        strokeWidth={2}
+                        pointerEvents='none'
+                      />
+                    );
+                  }
+                  return null;
+                })()}
             </svg>
-            <img
-              src='/sample.jpg'
-              alt='sample'
-              width={imgWidth}
-              height={imgHeight}
-              style={{
-                display: 'block',
-                width: imgWidth,
-                height: imgHeight,
-                userSelect: 'none',
-                borderRadius: 16,
-                boxShadow: '0 2px 12px #b3e5fc33',
-              }}
-              draggable={false}
-            />
           </div>
         </TransformComponent>
       </TransformWrapper>
