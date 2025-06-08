@@ -387,10 +387,10 @@ export default function Home() {
               position: 'relative',
               width: imgWidth,
               height: imgHeight,
-              border: '2px solid #4fc3f7',
               borderRadius: 16,
               background: 'linear-gradient(135deg, #ffffff 60%, #e1f5fe 100%)',
               boxShadow: '0 4px 24px #b3e5fc55',
+              overflow: 'hidden', // 追加: 角丸からはみ出た部分を非表示
             }}
           >
             <svg
