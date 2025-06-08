@@ -10,6 +10,17 @@ interface Circle {
   r: number; // 半径（%）
 }
 
+// 編集用状態の型
+interface EditState {
+  dragId: number | null;
+  dragOffset: { dx: number; dy: number };
+  drawing: { startX: number; startY: number } | null;
+  resizeId: number | null;
+  resizeStart: { mx: number; my: number; r: number } | null;
+  lastMouse: { x: number; y: number } | null;
+  hoverId: number | null;
+}
+
 function ZoomSlider({
   zoom,
   setZoom,
@@ -214,33 +225,28 @@ function ZoomSlider({
 
 export default function Home() {
   const [circles, setCircles] = useState<Circle[]>([]);
+  // 編集用状態（ドラッグ・描画・リサイズ・ホバーなど）
+  const [edit, setEdit] = useState<EditState>({
+    dragId: null,
+    dragOffset: { dx: 0, dy: 0 },
+    drawing: null,
+    resizeId: null,
+    resizeStart: null,
+    lastMouse: null,
+    hoverId: null,
+  });
   // Undo履歴（最大10件）
   const [undoStack, setUndoStack] = useState<Circle[][]>([]);
   const isPushingUndo = useRef(false); // 無限ループ防止
-  const [zoom, setZoom] = useState(1);
+  // ズーム値
+  const [zoom, setZoom] = useState<number>(1);
+  // Transform API
   const [setTransformApi, setSetTransformApi] = useState<
-    | null
-    | ((
-        x: number,
-        y: number,
-        scale: number,
-        duration?: number,
-        animationType?: string
-      ) => void)
+    ((x: number, y: number, scale: number, duration?: number, animationType?: string) => void) | null
   >(null);
   const [getTransformApi, setGetTransformApi] = useState<
-    null | (() => { positionX: number; positionY: number; scale: number })
+    (() => { positionX: number; positionY: number; scale: number }) | null
   >(null);
-  // --- 編集用状態はuseStateでまとめて管理 ---
-  const [edit, setEdit] = useState({
-    dragId: null as number | null,
-    dragOffset: { dx: 0, dy: 0 },
-    drawing: null as { startX: number; startY: number } | null,
-    resizeId: null as number | null,
-    resizeStart: null as { mx: number; my: number; r: number } | null,
-    lastMouse: null as { x: number; y: number } | null,
-    hoverId: null as number | null,
-  });
   // --- モード切替はuseStateのまま維持 ---
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
@@ -248,15 +254,14 @@ export default function Home() {
   const imgWidth = 800;
   const imgHeight = 600;
 
-  // --- Undo履歴pushユーティリティ ---
-  const pushUndo = (prevCircles: Circle[]) => {
+  // Undo履歴に現在の円リストを追加（最大10件）
+  const pushUndo = useCallback((prevCircles: Circle[]) => {
     setUndoStack((stack) => {
       const newStack = [...stack, prevCircles.map((c) => ({ ...c }))];
-      // 最大10件まで
       if (newStack.length > 10) newStack.shift();
       return newStack;
     });
-  };
+  }, []);
 
   // --- Undo（ESCキー） ---
   useEffect(() => {
@@ -270,18 +275,16 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undoStack, edit.drawing]);
 
-  // SVG座標変換の共通関数
+  // SVG座標を%で取得するユーティリティ
   const getSvgRelativeCoords = (
     e: React.MouseEvent<SVGSVGElement | SVGCircleElement, MouseEvent>,
     svgRect?: DOMRect
-  ) => {
+  ): { x: number; y: number } => {
     let rect: DOMRect;
     if (svgRect) {
       rect = svgRect;
     } else if ('ownerSVGElement' in e.target && e.target.ownerSVGElement) {
-      rect = (
-        e.target as SVGCircleElement
-      ).ownerSVGElement!.getBoundingClientRect();
+      rect = (e.target as SVGCircleElement).ownerSVGElement!.getBoundingClientRect();
     } else if ('getBoundingClientRect' in e.target) {
       rect = (e.target as SVGSVGElement).getBoundingClientRect();
     } else {
@@ -296,6 +299,19 @@ export default function Home() {
     pushUndo(prevCircles);
     isPushingUndo.current = true;
   };
+
+  // 編集用状態のリセット
+  const resetEditState = useCallback(() => {
+    setEdit({
+      dragId: null,
+      dragOffset: { dx: 0, dy: 0 },
+      drawing: null,
+      resizeId: null,
+      resizeStart: null,
+      lastMouse: null,
+      hoverId: null,
+    });
+  }, []);
 
   // --- 編集操作時にUndo履歴をpush ---
   // 円追加
