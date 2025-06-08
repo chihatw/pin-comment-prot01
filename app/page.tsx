@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 
 // 円の型
@@ -214,6 +214,9 @@ function ZoomSlider({
 
 export default function Home() {
   const [circles, setCircles] = useState<Circle[]>([]);
+  // Undo履歴（最大10件）
+  const [undoStack, setUndoStack] = useState<Circle[][]>([]);
+  const isPushingUndo = useRef(false); // 無限ループ防止
   const [dragId, setDragId] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number }>({
     dx: 0,
@@ -255,6 +258,29 @@ export default function Home() {
   const imgWidth = 800;
   const imgHeight = 600;
 
+  // --- Undo履歴pushユーティリティ ---
+  const pushUndo = (prevCircles: Circle[]) => {
+    setUndoStack((stack) => {
+      const newStack = [...stack, prevCircles.map((c) => ({ ...c }))];
+      // 最大10件まで
+      if (newStack.length > 10) newStack.shift();
+      return newStack;
+    });
+  };
+
+  // --- Undo（ESCキー） ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (mode === 'edit' && e.key === 'Escape' && undoStack.length > 0) {
+        setCircles(undoStack[undoStack.length - 1]);
+        setUndoStack((stack) => stack.slice(0, -1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mode, undoStack]);
+
+  // --- 編集操作時にUndo履歴をpush ---
   // 円追加
   const handleSvgMouseDown = (
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
@@ -264,6 +290,7 @@ export default function Home() {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
+    pushUndo(circles);
     setDrawing({ startX: x, startY: y });
   };
   const handleSvgMouseMove = (
@@ -312,6 +339,10 @@ export default function Home() {
     e: React.MouseEvent<SVGSVGElement, MouseEvent>
   ) => {
     if (dragId === null) return;
+    if (!isPushingUndo.current) {
+      pushUndo(circles);
+      isPushingUndo.current = true;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -326,11 +357,13 @@ export default function Home() {
   // 円のドラッグ終了
   const handleSvgDragEnd = () => {
     setDragId(null);
+    isPushingUndo.current = false;
   };
   // 円の削除
   const handleCircleRightClick = (id: number, e: React.MouseEvent) => {
     if (mode !== 'edit') return;
     e.preventDefault();
+    pushUndo(circles);
     setCircles((circles) => circles.filter((c) => c.id !== id));
   };
 
@@ -418,6 +451,10 @@ export default function Home() {
               onMouseMove={(e) => {
                 if (mode === 'edit') {
                   if (resizeId !== null && resizeStart) {
+                    if (!isPushingUndo.current) {
+                      pushUndo(circles);
+                      isPushingUndo.current = true;
+                    }
                     // --- リサイズ処理 ---
                     const rect = e.currentTarget.getBoundingClientRect();
                     const cx = circles.find((c) => c.id === resizeId)?.x ?? 0;
@@ -449,6 +486,7 @@ export default function Home() {
                   if (resizeId !== null) {
                     setResizeId(null);
                     setResizeStart(null);
+                    isPushingUndo.current = false;
                   } else if (dragId !== null) handleSvgDragEnd();
                   else if (drawing) handleSvgMouseUp(e);
                 }
