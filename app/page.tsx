@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CircleCanvas from './CircleCanvas';
 import CommentPanel from './CommentPanel';
 
 // 円の型
@@ -116,50 +117,15 @@ export default function Home() {
     [edit, circles]
   );
 
-  const handleSvgMouseMove = useCallback(
+  // --- CircleCanvas用コールバック ---
+  // 内部用: 描画中のマウス移動
+  const handleSvgMouseMoveInner = useCallback(
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       if (edit.drawing === null) return;
       const { x, y } = getSvgRelativeCoords(e);
       setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
     },
     [edit]
-  );
-
-  const handleSvgMouseUp = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.drawing === null) return;
-      const { x, y } = getSvgRelativeCoords(e);
-      const dx = x - edit.drawing.startX;
-      const dy = y - edit.drawing.startY;
-      const r = Math.sqrt(dx * dx + dy * dy) / 2;
-      if (r > 1) {
-        const centerX = (edit.drawing.startX + x) / 2;
-        const centerY = (edit.drawing.startY + y) / 2;
-        setCircles((prev) => [
-          ...prev,
-          { id: Date.now(), x: centerX, y: centerY, r },
-        ]);
-      }
-      setEdit((prev) => ({ ...prev, drawing: null, lastMouse: null }));
-    },
-    [edit]
-  );
-
-  // 円ドラッグ開始
-  const handleCircleMouseDown = useCallback(
-    (id: number, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const { x, y } = getSvgRelativeCoords(
-        e as React.MouseEvent<SVGCircleElement, MouseEvent>
-      );
-      const circle = circles.find((c) => c.id === id)!;
-      setEdit((prev) => ({
-        ...prev,
-        dragId: id,
-        dragOffset: { dx: circle.x - x, dy: circle.y - y },
-      }));
-    },
-    [circles, edit]
   );
 
   // SVG上でのドラッグ移動
@@ -181,6 +147,27 @@ export default function Home() {
     [edit, circles]
   );
 
+  // 内部用: 描画中のマウスアップ
+  const handleSvgMouseUpInner = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.drawing === null) return;
+      const { x, y } = getSvgRelativeCoords(e);
+      const dx = x - edit.drawing.startX;
+      const dy = y - edit.drawing.startY;
+      const r = Math.sqrt(dx * dx + dy * dy) / 2;
+      if (r > 1) {
+        const centerX = (edit.drawing.startX + x) / 2;
+        const centerY = (edit.drawing.startY + y) / 2;
+        setCircles((prev) => [
+          ...prev,
+          { id: Date.now(), x: centerX, y: centerY, r },
+        ]);
+      }
+      setEdit((prev) => ({ ...prev, drawing: null, lastMouse: null }));
+    },
+    [edit]
+  );
+
   // ドラッグ終了
   const handleSvgDragEnd = useCallback(() => {
     setEdit((prev) => ({
@@ -190,6 +177,92 @@ export default function Home() {
     }));
     isPushingUndo.current = false;
   }, [edit]);
+
+  const handleSvgMouseMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.resizeId !== null && edit.resizeStart) {
+        if (!isPushingUndo.current) {
+          pushUndo(circles);
+          isPushingUndo.current = true;
+        }
+        // --- リサイズ処理 ---
+        const rect = e.currentTarget.getBoundingClientRect();
+        const cx = circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
+        const cy = circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
+        // マウス座標（%）
+        const mx = ((e.clientX - rect.left) / rect.width) * 100;
+        const my = ((e.clientY - rect.top) / rect.height) * 100;
+        // 中心→マウスの距離（%）
+        const dx = mx - cx;
+        const dy = my - cy;
+        const newR = Math.sqrt(dx * dx + dy * dy);
+        setCircles((prev) =>
+          prev.map((c) =>
+            c.id === edit.resizeId ? { ...c, r: Math.max(newR, 1) } : c
+          )
+        );
+      } else if (edit.dragId !== null) handleSvgDragMove(e);
+      else if (edit.drawing) handleSvgMouseMoveInner(e);
+
+      if (edit.hoverId !== null) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
+      }
+    },
+    [edit, circles, handleSvgDragMove, handleSvgMouseMoveInner, pushUndo]
+  );
+
+  const handleSvgMouseUp = useCallback(
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      if (edit.resizeId !== null) {
+        setEdit((prev) => ({
+          ...prev,
+          resizeId: null,
+          resizeStart: null,
+        }));
+        isPushingUndo.current = false;
+      } else if (edit.dragId !== null) handleSvgDragEnd();
+      else if (edit.drawing) handleSvgMouseUpInner(e);
+    },
+    [edit, handleSvgDragEnd, handleSvgMouseUpInner]
+  );
+
+  const handleSvgMouseLeave = useCallback(() => {
+    setEdit((prev) => ({
+      ...prev,
+      dragId: null,
+      dragOffset: { dx: 0, dy: 0 },
+      drawing: null,
+      resizeId: null,
+      resizeStart: null,
+      lastMouse: null,
+      hoverId: null,
+    }));
+    setEdit((prev) => ({ ...prev, hoverId: null }));
+  }, []);
+
+  const handleSvgClick = useCallback(() => {
+    setEdit((prev) => ({ ...prev, selectedId: null }));
+  }, []);
+
+  // 円ドラッグ開始
+  const handleCircleMouseDown = useCallback(
+    (id: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const { x, y } = getSvgRelativeCoords(
+        e as React.MouseEvent<SVGCircleElement, MouseEvent>
+      );
+      const circle = circles.find((c) => c.id === id)!;
+      setEdit((prev) => ({
+        ...prev,
+        dragId: id,
+        dragOffset: { dx: circle.x - x, dy: circle.y - y },
+      }));
+    },
+    [circles, edit]
+  );
 
   // 円右クリック（コンテキストメニュー）
   const handleCircleRightClick = useCallback(
@@ -418,140 +491,18 @@ export default function Home() {
           background: '#fff',
         }}
       >
-        <div
-          style={{
-            position: 'relative',
-            width: imgWidth,
-            height: imgHeight,
-            borderRadius: 16,
-            background: 'linear-gradient(135deg, #ffffff 60%, #e1f5fe 100%)',
-            boxShadow: '0 4px 24px #b3e5fc55',
-            overflow: 'hidden',
-          }}
-        >
-          {/* 画像 */}
-          <img
-            src='/sample.jpg'
-            width={imgWidth}
-            height={imgHeight}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: imgWidth,
-              height: imgHeight,
-              userSelect: 'none',
-              borderRadius: 16,
-              boxShadow: '0 2px 12px #b3e5fc33',
-              zIndex: 1,
-              pointerEvents: 'none',
-              display: 'block',
-            }}
-            alt='写真'
-            draggable={false}
-          />
-          <svg
-            width={imgWidth}
-            height={imgHeight}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              zIndex: 2,
-              cursor: edit.drawing
-                ? 'crosshair'
-                : edit.dragId
-                ? 'grabbing'
-                : 'pointer',
-            }}
-            onMouseDown={edit.dragId === null ? handleSvgMouseDown : undefined}
-            onMouseMove={(e) => {
-              if (edit.resizeId !== null && edit.resizeStart) {
-                if (!isPushingUndo.current) {
-                  pushUndo(circles);
-                  isPushingUndo.current = true;
-                }
-                // --- リサイズ処理 ---
-                const rect = e.currentTarget.getBoundingClientRect();
-                const cx = circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
-                const cy = circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
-                // マウス座標（%）
-                const mx = ((e.clientX - rect.left) / rect.width) * 100;
-                const my = ((e.clientY - rect.top) / rect.height) * 100;
-                // 中心→マウスの距離（%）
-                const dx = mx - cx;
-                const dy = my - cy;
-                const newR = Math.sqrt(dx * dx + dy * dy);
-                setCircles((prev) =>
-                  prev.map((c) =>
-                    c.id === edit.resizeId ? { ...c, r: Math.max(newR, 1) } : c
-                  )
-                );
-              } else if (edit.dragId !== null) handleSvgDragMove(e);
-              else if (edit.drawing) handleSvgMouseMove(e);
-
-              if (edit.hoverId !== null) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
-              }
-            }}
-            onMouseUp={(e) => {
-              if (edit.resizeId !== null) {
-                setEdit((prev) => ({
-                  ...prev,
-                  resizeId: null,
-                  resizeStart: null,
-                }));
-                isPushingUndo.current = false;
-              } else if (edit.dragId !== null) handleSvgDragEnd();
-              else if (edit.drawing) handleSvgMouseUp(e);
-            }}
-            onMouseLeave={() => {
-              setEdit((prev) => ({
-                ...prev,
-                dragId: null,
-                dragOffset: { dx: 0, dy: 0 },
-                drawing: null,
-                resizeId: null,
-                resizeStart: null,
-                lastMouse: null,
-                hoverId: null,
-              }));
-              setEdit((prev) => ({ ...prev, hoverId: null }));
-            }}
-            onClick={() => setEdit((prev) => ({ ...prev, selectedId: null }))}
-          >
-            {/* 既存の円 */}
-            {renderedCircles}
-            {/* 描画中の円プレビュー */}
-            {edit.drawing &&
-              edit.lastMouse &&
-              (() => {
-                const dx = edit.lastMouse.x - edit.drawing.startX;
-                const dy = edit.lastMouse.y - edit.drawing.startY;
-                const r = Math.sqrt(dx * dx + dy * dy) / 2;
-                if (r > 0.5) {
-                  const centerX = (edit.drawing.startX + edit.lastMouse.x) / 2;
-                  const centerY = (edit.drawing.startY + edit.lastMouse.y) / 2;
-                  return (
-                    <circle
-                      cx={`${centerX}%`}
-                      cy={`${centerY}%`}
-                      r={`${r}%`}
-                      fill='rgba(33, 150, 243, 0.09)'
-                      stroke='#4fc3f7'
-                      strokeDasharray='4 2'
-                      strokeWidth={2}
-                      pointerEvents='none'
-                    />
-                  );
-                }
-                return null;
-              })()}
-          </svg>
-        </div>
+        <CircleCanvas
+          circles={circles}
+          edit={edit}
+          imgWidth={imgWidth}
+          imgHeight={imgHeight}
+          onSvgMouseDown={handleSvgMouseDown}
+          onSvgMouseMove={handleSvgMouseMove}
+          onSvgMouseUp={handleSvgMouseUp}
+          onSvgMouseLeave={handleSvgMouseLeave}
+          onSvgClick={handleSvgClick}
+          renderedCircles={renderedCircles}
+        />
       </div>
       {/* 右カラム: コメント編集エリア */}
       <CommentPanel
