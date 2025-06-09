@@ -5,6 +5,7 @@ export interface CircleCanvasProps {
   edit: EditState;
   imgWidth: number;
   imgHeight: number;
+  imgSrc?: string; // 追加
   onSvgMouseDown: (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => void;
   onSvgMouseMove: (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => void;
   onSvgMouseUp: (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => void;
@@ -41,6 +42,7 @@ const CircleCanvas: React.FC<CircleCanvasProps> = ({
   edit,
   imgWidth,
   imgHeight,
+  imgSrc, // 追加
   onSvgMouseDown,
   onSvgMouseMove,
   onSvgMouseUp,
@@ -56,12 +58,13 @@ const CircleCanvas: React.FC<CircleCanvasProps> = ({
       {/* 画像 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src='/sample.jpg'
+        src={imgSrc}
         width={imgWidth}
         height={imgHeight}
-        className='absolute top-0 left-0 w-full h-full select-none rounded-[16px] shadow-[0_2px_12px_#b3e5fc33] z-[1] pointer-events-none block'
+        className='absolute top-0 left-0 w-full h-full object-contain select-none rounded-[16px] shadow-[0_2px_12px_#b3e5fc33] z-[1] pointer-events-none block'
         alt='写真'
         draggable={false}
+        style={{ display: imgSrc ? undefined : 'none' }}
       />
       <svg
         width={imgWidth}

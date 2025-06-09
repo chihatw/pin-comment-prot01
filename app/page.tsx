@@ -4,6 +4,7 @@ import CircleCanvas from './CircleCanvas';
 import CommentPanel from './CommentPanel';
 import { useCircleEditState } from './hooks/useCircleEditState';
 import { useCommentManager } from './hooks/useCommentManager';
+import { useImageUpload } from './hooks/useImageUpload';
 import { useSvgCircleEditor } from './hooks/useSvgCircleEditor';
 import { useUndoManager } from './hooks/useUndoManager';
 import RenderedCircles from './RenderedCircles';
@@ -17,6 +18,9 @@ export default function Home() {
 
   const imgWidth = 800;
   const imgHeight = 600;
+
+  // 画像アップロード用
+  const { imgSrc, handleFileChange } = useImageUpload();
 
   // --- Undo（ESCキー）---
   useEffect(() => {
@@ -59,32 +63,22 @@ export default function Home() {
   } = useCommentManager({ circles, setCircles, edit, setEdit });
 
   return (
-    <main
-      style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'stretch',
-        justifyContent: 'center',
-        background: '#fff',
-      }}
-    >
+    <main className='w-screen h-screen flex flex-row items-stretch justify-center bg-white'>
       {/* 左カラム: 画像＋円描画エリア */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#fff',
-        }}
-      >
+      <div className='flex-1 min-w-0 flex items-center justify-center bg-white relative'>
+        <div className='absolute top-6 left-6 z-10'>
+          <input
+            type='file'
+            accept='image/*'
+            onChange={handleFileChange}
+            className='block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
+          />
+        </div>
         <CircleCanvas
           edit={edit}
           imgWidth={imgWidth}
           imgHeight={imgHeight}
+          imgSrc={imgSrc}
           onSvgMouseDown={handleSvgMouseDown}
           onSvgMouseMove={handleSvgMouseMove}
           onSvgMouseUp={handleSvgMouseUp}
