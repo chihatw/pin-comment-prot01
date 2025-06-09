@@ -1,5 +1,6 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
+import { Button } from '../../../components/ui/button';
 import CircleCanvas from '../../CircleCanvas';
 import CommentPanel from '../../CommentPanel';
 import { useCircleEditState } from '../../hooks/useCircleEditState';
@@ -65,12 +66,12 @@ export default function EditPage() {
           画像が見つかりません。
           <br />
           {imgError && <div className='text-red-500'>{imgError}</div>}
-          <button
+          <Button
             onClick={() => router.push('/')}
             className='ml-4 px-4 py-2 bg-blue-500 text-white rounded'
           >
             メインへ戻る
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -79,12 +80,12 @@ export default function EditPage() {
   return (
     <div className='flex flex-col flex-1 w-full'>
       <div className='p-4'>
-        <button
+        <Button
           onClick={() => router.push('/')}
           className='px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition'
         >
           メインへ戻る
-        </button>
+        </Button>
       </div>
       <div className='flex flex-row flex-1 items-stretch justify-center bg-white'>
         {/* 左カラム: 画像＋円描画エリア */}

@@ -1,6 +1,15 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '../../components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function LoginPage() {
@@ -28,36 +37,42 @@ export default function LoginPage() {
 
   return (
     <div className='flex min-h-screen items-center justify-center bg-gray-50'>
-      <form
-        onSubmit={handleLogin}
-        className='bg-white p-8 rounded shadow-md w-full max-w-sm'
-      >
-        <h1 className='text-2xl font-bold mb-6 text-center'>ログイン</h1>
-        <input
-          type='email'
-          placeholder='メールアドレス'
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className='w-full mb-4 px-3 py-2 border rounded'
-          required
-        />
-        <input
-          type='password'
-          placeholder='パスワード'
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className='w-full mb-4 px-3 py-2 border rounded'
-          required
-        />
-        {error && <div className='text-red-500 mb-4 text-sm'>{error}</div>}
-        <button
-          type='submit'
-          className='w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50'
-          disabled={loading}
-        >
-          {loading ? 'ログイン中...' : 'ログイン'}
-        </button>
-      </form>
+      <Card className='w-full max-w-sm'>
+        <CardHeader>
+          <CardTitle className='text-2xl font-bold text-center'>
+            ログイン
+          </CardTitle>
+        </CardHeader>
+        <form onSubmit={handleLogin}>
+          <CardContent className='flex flex-col gap-4'>
+            <Input
+              type='email'
+              placeholder='メールアドレス'
+              value={email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setEmail(e.target.value)
+              }
+              required
+            />
+            <Input
+              type='password'
+              placeholder='パスワード'
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setPassword(e.target.value)
+              }
+              required
+            />
+            {error && <div className='text-red-500 text-sm'>{error}</div>}
+          </CardContent>
+          <div className='h-4' />
+          <CardFooter>
+            <Button type='submit' className='w-full' disabled={loading}>
+              {loading ? 'ログイン中...' : 'ログイン'}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 }

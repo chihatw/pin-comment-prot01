@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../components/ui/button';
 import type { Circle } from './types';
 
 export interface CommentPanelProps {
@@ -58,13 +59,15 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
                 )}
               </div>
               {/* 削除ボタン（アイコン） */}
-              <button
+              <Button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(circle.id);
                 }}
                 aria-label='削除'
-                className='bg-none border-none p-1 ml-2 cursor-pointer rounded transition-colors flex items-center hover:bg-red-50'
+                variant='ghost'
+                size='icon'
+                className='p-1 ml-2 rounded flex items-center hover:bg-red-50'
                 type='button'
               >
                 {/* ゴミ箱アイコン */}
@@ -83,7 +86,7 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
                   <line x1='10' y1='11' x2='10' y2='17' />
                   <line x1='14' y1='11' x2='14' y2='17' />
                 </svg>
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -102,14 +105,14 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
             placeholder='コメントを入力...'
             aria-label='コメント'
           />
-          <button
+          <Button
             onClick={onCommentSave}
             className='self-end bg-blue-700 text-white border-none rounded px-4 py-2 cursor-pointer font-bold transition-colors hover:bg-blue-800'
             aria-label='コメントを保存'
             type='button'
           >
             保存
-          </button>
+          </Button>
         </div>
       )}
     </div>

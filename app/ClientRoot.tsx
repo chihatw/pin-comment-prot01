@@ -1,5 +1,6 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
+import { Button } from '../components/ui/button';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthGuard } from './hooks/useAuthGuard';
 
@@ -13,12 +14,12 @@ function Header() {
   };
   return (
     <header className='w-full flex justify-end p-4 bg-gray-100'>
-      <button
+      <Button
         onClick={handleLogout}
         className='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600'
       >
         ログアウト
-      </button>
+      </Button>
     </header>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { Button } from '../components/ui/button';
 import { useThumbnailImages } from './hooks/useThumbnailImages';
 
 export default function Home() {
@@ -28,7 +29,7 @@ export default function Home() {
               alt=''
               className='w-full h-full object-cover rounded-xl'
             />
-            <button
+            <Button
               type='button'
               className='absolute top-2 right-2 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-red-500 hover:text-white text-gray-500 transition'
               onClick={(e) => {
@@ -36,6 +37,8 @@ export default function Home() {
                 handleThumbnailDelete(img.id);
               }}
               aria-label='サムネイル削除'
+              variant='ghost'
+              size='icon'
             >
               <svg
                 width='28'
@@ -50,7 +53,7 @@ export default function Home() {
                 <line x1='5' y1='5' x2='15' y2='15' />
                 <line x1='15' y1='5' x2='5' y2='15' />
               </svg>
-            </button>
+            </Button>
           </div>
         ))}
         {images.length < 2 && (
