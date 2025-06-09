@@ -50,15 +50,8 @@ const CircleCanvas: React.FC<CircleCanvasProps> = ({
 }) => {
   return (
     <div
-      style={{
-        position: 'relative',
-        width: imgWidth,
-        height: imgHeight,
-        borderRadius: 16,
-        background: 'linear-gradient(135deg, #ffffff 60%, #e1f5fe 100%)',
-        boxShadow: '0 4px 24px #b3e5fc55',
-        overflow: 'hidden',
-      }}
+      className='relative rounded-[16px] bg-gradient-to-br from-white to-[#e1f5fe] shadow-[0_4px_24px_#b3e5fc55] overflow-hidden'
+      style={{ width: imgWidth, height: imgHeight }}
     >
       {/* 画像 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -66,36 +59,20 @@ const CircleCanvas: React.FC<CircleCanvasProps> = ({
         src='/sample.jpg'
         width={imgWidth}
         height={imgHeight}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: imgWidth,
-          height: imgHeight,
-          userSelect: 'none',
-          borderRadius: 16,
-          boxShadow: '0 2px 12px #b3e5fc33',
-          zIndex: 1,
-          pointerEvents: 'none',
-          display: 'block',
-        }}
+        className='absolute top-0 left-0 w-full h-full select-none rounded-[16px] shadow-[0_2px_12px_#b3e5fc33] z-[1] pointer-events-none block'
         alt='写真'
         draggable={false}
       />
       <svg
         width={imgWidth}
         height={imgHeight}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          zIndex: 2,
-          cursor: edit.drawing
-            ? 'crosshair'
+        className={`absolute top-0 left-0 z-[2] ${
+          edit.drawing
+            ? 'cursor-crosshair'
             : edit.dragId
-            ? 'grabbing'
-            : 'pointer',
-        }}
+            ? 'cursor-grabbing'
+            : 'cursor-pointer'
+        }`}
         onMouseDown={edit.dragId === null ? onSvgMouseDown : undefined}
         onMouseMove={onSvgMouseMove}
         onMouseUp={onSvgMouseUp}
