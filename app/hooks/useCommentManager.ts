@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
 import type { Circle, EditState } from '../types';
+import { useCommentDraftStorage } from './useCommentDraftStorage';
 
 interface UseCommentManagerProps {
   circles: Circle[];
@@ -15,6 +16,9 @@ export function useCommentManager({
   setEdit,
 }: UseCommentManagerProps) {
   const [commentDraft, setCommentDraft] = useState('');
+
+  // localStorage同期
+  useCommentDraftStorage(commentDraft, setCommentDraft);
 
   // 選択中の円
   const selectedCircle = useMemo(

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { Circle, EditState } from '../types';
+import { getInitialCircles, useCircleStorage } from './useCircleStorage';
 
 const initialEditState: EditState = {
   dragId: null,
@@ -13,8 +14,11 @@ const initialEditState: EditState = {
 };
 
 export function useCircleEditState() {
-  const [circles, setCircles] = useState<Circle[]>([]);
+  const [circles, setCircles] = useState<Circle[]>(getInitialCircles);
   const [edit, setEdit] = useState<EditState>(initialEditState);
+
+  // localStorage同期
+  useCircleStorage(circles);
 
   // 編集用状態のリセット
   const resetEditState = useCallback(() => {
