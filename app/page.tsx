@@ -82,7 +82,6 @@ export default function Home() {
         }}
       >
         <CircleCanvas
-          circles={circles}
           edit={edit}
           imgWidth={imgWidth}
           imgHeight={imgHeight}
@@ -91,18 +90,17 @@ export default function Home() {
           onSvgMouseUp={handleSvgMouseUp}
           onSvgMouseLeave={handleSvgMouseLeave}
           onSvgClick={handleSvgClick}
-          renderedCircles={
-            <RenderedCircles
-              circles={circles}
-              edit={edit}
-              imgWidth={imgWidth}
-              imgHeight={imgHeight}
-              setEdit={setEdit}
-              handleCircleMouseDown={handleCircleMouseDown}
-              handleCircleRightClick={handleCircleRightClick}
-            />
-          }
-        />
+        >
+          <RenderedCircles
+            circles={circles}
+            edit={edit}
+            imgWidth={imgWidth}
+            imgHeight={imgHeight}
+            setEdit={setEdit}
+            handleCircleMouseDown={handleCircleMouseDown}
+            handleCircleRightClick={handleCircleRightClick}
+          />
+        </CircleCanvas>
       </div>
       {/* 右カラム: コメント編集エリア */}
       <CommentPanel
