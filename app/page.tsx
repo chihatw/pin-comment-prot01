@@ -1,38 +1,24 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import CircleCanvas from './CircleCanvas';
 import CommentPanel from './CommentPanel';
-import type { Circle, EditState } from './types';
-import {
-  getCircleLabelPosition,
-  getSvgRelativeCoords,
-  pushUndo as pushUndoUtil,
-} from './utils';
+import { useCircleEditState } from './hooks/useCircleEditState';
+import { useCommentManager } from './hooks/useCommentManager';
+import { useSvgCircleEditor } from './hooks/useSvgCircleEditor';
+import { useUndoManager } from './hooks/useUndoManager';
+import { getCircleLabelPosition } from './utils';
 
 export default function Home() {
-  const [circles, setCircles] = useState<Circle[]>([]);
-  const [edit, setEdit] = useState<EditState>({
-    dragId: null,
-    dragOffset: { dx: 0, dy: 0 },
-    drawing: null,
-    resizeId: null,
-    resizeStart: null,
-    lastMouse: null,
-    hoverId: null,
-    selectedId: null,
-  });
-  const [undoStack, setUndoStack] = useState<Circle[][]>([]);
-  const isPushingUndo = useRef(false);
+  const { circles, setCircles, edit, setEdit } = useCircleEditState();
+
+  // Undo管理用カスタムフック
+  const { undoStack, setUndoStack, isPushingUndo, pushUndo, pushUndoIfNeeded } =
+    useUndoManager({ circles, setCircles, edit, setEdit });
 
   const imgWidth = 800;
   const imgHeight = 600;
 
-  // Undo履歴に現在の円リストを追加（最大10件）
-  const pushUndo = useCallback((prevCircles: Circle[]) => {
-    setUndoStack((prev) => pushUndoUtil(prev, prevCircles, 10));
-  }, []); // pushUndoUtilのみ参照
-
-  // --- Undo（ESCキー） ---
+  // --- Undo（ESCキー）---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (edit.drawing === null && e.key === 'Escape' && undoStack.length > 0) {
@@ -42,216 +28,26 @@ export default function Home() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack, edit.drawing]);
+  }, [undoStack, edit.drawing, setUndoStack, setCircles]);
 
-  // Undo pushの共通関数
-  const pushUndoIfNeeded = useCallback(
-    (prevCircles: Circle[]) => {
-      pushUndo(prevCircles);
-      isPushingUndo.current = true;
-    },
-    [pushUndo]
-  );
-
-  // 編集用状態のリセット
-  // const resetEditState = useCallback(() => {
-  //   setEdit({
-  //     dragId: null,
-  //     dragOffset: { dx: 0, dy: 0 },
-  //     drawing: null,
-  //     resizeId: null,
-  //     resizeStart: null,
-  //     lastMouse: null,
-  //     hoverId: null,
-  //     selectedId: null, // 追加
-  //   });
-  // }, []);
-
-  // --- 編集操作時にUndo履歴をpush ---
-  // 円追加
-  const handleSvgMouseDown = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.drawing !== null) return;
-      if (e.button !== 0) return;
-      const { x, y } = getSvgRelativeCoords(e);
-      pushUndo(circles);
-      setEdit((prev) => ({ ...prev, drawing: { startX: x, startY: y } }));
-    },
-    [edit, circles, pushUndo]
-  );
-
-  // --- CircleCanvas用コールバック ---
-  // 内部用: 描画中のマウス移動
-  const handleSvgMouseMoveInner = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.drawing === null) return;
-      const { x, y } = getSvgRelativeCoords(e);
-      setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
-    },
-    [edit.drawing] // 不要なedit依存を削除
-  );
-
-  // SVG上でのドラッグ移動
-  const handleSvgDragMove = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.dragId === null) return;
-      if (!isPushingUndo.current) {
-        pushUndoIfNeeded(circles);
-      }
-      const { x, y } = getSvgRelativeCoords(e);
-      setCircles((prev) =>
-        prev.map((c) =>
-          c.id === edit.dragId
-            ? { ...c, x: x + edit.dragOffset.dx, y: y + edit.dragOffset.dy }
-            : c
-        )
-      );
-    },
-    [edit.dragId, edit.dragOffset, circles, pushUndoIfNeeded]
-  );
-
-  // 内部用: 描画中のマウスアップ
-  const handleSvgMouseUpInner = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.drawing === null) return;
-      const { x, y } = getSvgRelativeCoords(e);
-      const dx = x - edit.drawing.startX;
-      const dy = y - edit.drawing.startY;
-      const r = Math.sqrt(dx * dx + dy * dy) / 2;
-      if (r > 1) {
-        const centerX = (edit.drawing.startX + x) / 2;
-        const centerY = (edit.drawing.startY + y) / 2;
-        setCircles((prev) => [
-          ...prev,
-          { id: Date.now(), x: centerX, y: centerY, r },
-        ]);
-      }
-      setEdit((prev) => ({ ...prev, drawing: null, lastMouse: null }));
-    },
-    [edit.drawing]
-  );
-
-  // ドラッグ終了
-  const handleSvgDragEnd = useCallback(() => {
-    setEdit((prev) => ({
-      ...prev,
-      dragId: null,
-      dragOffset: { dx: 0, dy: 0 },
-    }));
-    isPushingUndo.current = false;
-  }, []); // edit依存を削除
-
-  const handleSvgMouseMove = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.resizeId !== null && edit.resizeStart) {
-        if (!isPushingUndo.current) {
-          pushUndo(circles);
-          isPushingUndo.current = true;
-        }
-        // --- リサイズ処理 ---
-        const rect = e.currentTarget.getBoundingClientRect();
-        const cx = circles.find((c) => c.id === edit.resizeId)?.x ?? 0;
-        const cy = circles.find((c) => c.id === edit.resizeId)?.y ?? 0;
-        // マウス座標（%）
-        const mx = ((e.clientX - rect.left) / rect.width) * 100;
-        const my = ((e.clientY - rect.top) / rect.height) * 100;
-        // 中心→マウスの距離（%）
-        const dx = mx - cx;
-        const dy = my - cy;
-        const newR = Math.sqrt(dx * dx + dy * dy);
-        setCircles((prev) =>
-          prev.map((c) =>
-            c.id === edit.resizeId ? { ...c, r: Math.max(newR, 1) } : c
-          )
-        );
-      } else if (edit.dragId !== null) handleSvgDragMove(e);
-      else if (edit.drawing) handleSvgMouseMoveInner(e);
-
-      if (edit.hoverId !== null) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
-      }
-    },
-    [
-      edit.resizeId,
-      edit.resizeStart,
-      edit.dragId,
-      edit.drawing,
-      edit.hoverId,
-      circles,
-      handleSvgDragMove,
-      handleSvgMouseMoveInner,
-      pushUndo,
-    ]
-  );
-
-  const handleSvgMouseUp = useCallback(
-    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (edit.resizeId !== null) {
-        setEdit((prev) => ({
-          ...prev,
-          resizeId: null,
-          resizeStart: null,
-        }));
-        isPushingUndo.current = false;
-      } else if (edit.dragId !== null) handleSvgDragEnd();
-      else if (edit.drawing) handleSvgMouseUpInner(e);
-    },
-    [
-      edit.resizeId,
-      edit.dragId,
-      edit.drawing,
-      handleSvgDragEnd,
-      handleSvgMouseUpInner,
-    ]
-  );
-
-  const handleSvgMouseLeave = useCallback(() => {
-    setEdit((prev) => ({
-      ...prev,
-      dragId: null,
-      dragOffset: { dx: 0, dy: 0 },
-      drawing: null,
-      resizeId: null,
-      resizeStart: null,
-      lastMouse: null,
-      hoverId: null,
-    }));
-    setEdit((prev) => ({ ...prev, hoverId: null }));
-  }, []);
-
-  const handleSvgClick = useCallback(() => {
-    setEdit((prev) => ({ ...prev, selectedId: null }));
-  }, []);
-
-  // 円ドラッグ開始
-  const handleCircleMouseDown = useCallback(
-    (id: number, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const { x, y } = getSvgRelativeCoords(
-        e as React.MouseEvent<SVGCircleElement, MouseEvent>
-      );
-      const circle = circles.find((c) => c.id === id)!;
-      setEdit((prev) => ({
-        ...prev,
-        dragId: id,
-        dragOffset: { dx: circle.x - x, dy: circle.y - y },
-      }));
-    },
-    [circles]
-  );
-
-  // 円右クリック（コンテキストメニュー）
-  const handleCircleRightClick = useCallback(
-    (id: number, e: React.MouseEvent) => {
-      e.preventDefault();
-      pushUndo(circles);
-      setCircles((prev) => prev.filter((c) => c.id !== id));
-    },
-    [circles, pushUndo]
-  );
+  // SVG操作系カスタムフック
+  const {
+    handleSvgMouseDown,
+    handleSvgMouseMove,
+    handleSvgMouseUp,
+    handleSvgMouseLeave,
+    handleSvgClick,
+    handleCircleMouseDown,
+    handleCircleRightClick,
+  } = useSvgCircleEditor({
+    circles,
+    setCircles,
+    edit,
+    setEdit,
+    pushUndo,
+    pushUndoIfNeeded,
+    isPushingUndo,
+  });
 
   // --- useMemoで円の描画用データを最適化（依存配列をhoverId等に限定）---
   const renderedCircles = useMemo(
@@ -401,53 +197,18 @@ export default function Home() {
       handleCircleRightClick,
       imgWidth,
       imgHeight,
+      setEdit,
     ]
   );
 
-  // コメント編集用
-  const [commentDraft, setCommentDraft] = useState('');
-  // 選択中の円
-  const selectedCircle = useMemo(
-    () => circles.find((c) => c.id === edit.selectedId) ?? null,
-    [circles, edit.selectedId]
-  );
-
-  // コメント欄の初期値同期
-  useEffect(() => {
-    if (selectedCircle) {
-      setCommentDraft(selectedCircle.comment || '');
-    } else {
-      setCommentDraft('');
-    }
-  }, [selectedCircle]);
-
-  // コメント保存
-  const handleCommentSave = () => {
-    if (!selectedCircle) return;
-    setCircles((prev) =>
-      prev.map((c) =>
-        c.id === selectedCircle.id ? { ...c, comment: commentDraft } : c
-      )
-    );
-  };
-
-  // コメント削除
-  const handleCommentDelete = (id: number) => {
-    setCircles((prev) => prev.filter((c) => c.id !== id));
-    setEdit((prev) =>
-      prev.selectedId === id ? { ...prev, selectedId: null } : prev
-    );
-  };
-
-  // コメント選択
-  const handleCommentSelect = (id: number) => {
-    setEdit((prev) => ({ ...prev, selectedId: id }));
-  };
-
-  // コメントdraft変更
-  const handleCommentDraftChange = (value: string) => {
-    setCommentDraft(value);
-  };
+  // コメント管理用カスタムフック
+  const {
+    commentDraft,
+    handleCommentSave,
+    handleCommentDelete,
+    handleCommentSelect,
+    handleCommentDraftChange,
+  } = useCommentManager({ circles, setCircles, edit, setEdit });
 
   return (
     <main
