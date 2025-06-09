@@ -12,7 +12,7 @@ export default function Home() {
   };
 
   return (
-    <main className='w-screen h-screen flex flex-col items-center justify-center bg-white'>
+    <div className='flex flex-1 flex-col items-center justify-center bg-white'>
       {/* サムネイル一覧 */}
       <div className='flex flex-row gap-8 my-12 justify-center items-center'>
         {images.map((img) => (
@@ -68,6 +68,6 @@ export default function Home() {
           </label>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -1,10 +1,10 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import CircleCanvas from '../../CircleCanvas';
 import CommentPanel from '../../CommentPanel';
 import { useCircleEditState } from '../../hooks/useCircleEditState';
 import { useCommentManager } from '../../hooks/useCommentManager';
+import { useImageSrc } from '../../hooks/useImageSrc';
 import { useSvgCircleEditor } from '../../hooks/useSvgCircleEditor';
 import { useUndoManager } from '../../hooks/useUndoManager';
 import RenderedCircles from '../../RenderedCircles';
@@ -15,17 +15,8 @@ export default function EditPage() {
   const imgWidth = 800;
   const imgHeight = 600;
 
-  // 画像情報は仮でlocalStorageから取得（本来はグローバル管理やDBが理想）
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
-  useEffect(() => {
-    if (typeof window !== 'undefined' && id) {
-      const images: { id: string; src: string }[] = JSON.parse(
-        localStorage.getItem('images') || '[]'
-      );
-      const found = images.find((img) => img.id === id);
-      setImgSrc(found?.src || null);
-    }
-  }, [id]);
+  // 画像情報はSupabase Storageから取得
+  const { imgSrc, isLoading, error: imgError } = useImageSrc(id);
 
   // --- 既存の編集UIを流用 ---
   const { circles, setCircles, edit, setEdit } = useCircleEditState();
@@ -60,11 +51,20 @@ export default function EditPage() {
     handleCommentDraftChange,
   } = useCommentManager({ circles, setCircles, edit, setEdit });
 
+  if (isLoading) {
+    return (
+      <div className='flex flex-1 items-center justify-center bg-white'>
+        <div>画像を読み込み中...</div>
+      </div>
+    );
+  }
   if (!imgSrc) {
     return (
-      <main className='w-screen h-screen flex items-center justify-center bg-white'>
+      <div className='flex flex-1 items-center justify-center bg-white'>
         <div>
           画像が見つかりません。
+          <br />
+          {imgError && <div className='text-red-500'>{imgError}</div>}
           <button
             onClick={() => router.push('/')}
             className='ml-4 px-4 py-2 bg-blue-500 text-white rounded'
@@ -72,12 +72,12 @@ export default function EditPage() {
             メインへ戻る
           </button>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className='w-screen h-screen flex flex-col'>
+    <div className='flex flex-col flex-1 w-full'>
       <div className='p-4'>
         <button
           onClick={() => router.push('/')}
@@ -122,6 +122,6 @@ export default function EditPage() {
           onCommentSave={handleCommentSave}
         />
       </div>
-    </main>
+    </div>
   );
 }

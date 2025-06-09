@@ -1,4 +1,7 @@
+import { supabase } from '../lib/supabaseClient';
 import type { Circle } from './types';
+import type { Database } from './types/supabase';
+import { supabaseErrorGuard } from './utils/supabaseUtils';
 
 // SVG座標変換ユーティリティ
 export function getSvgRelativeCoords(
@@ -47,4 +50,39 @@ export function pushUndo(
   const newStack = [...prevStack, prevCircles.map((c) => ({ ...c }))];
   if (newStack.length > maxStack) newStack.shift();
   return newStack;
+}
+
+export type ThumbnailImage = { id: string; src: string };
+
+export type PinCommentImageRow =
+  Database['public']['Tables']['pin_comment_images']['Row'];
+
+export async function fetchImageWithSignedUrl(
+  imageId: string
+): Promise<ThumbnailImage | null> {
+  const { data: imageData, error: imageError } = await supabase
+    .from('pin_comment_images')
+    .select('*')
+    .eq('id', imageId)
+    .single();
+  try {
+    const { storage_path } = supabaseErrorGuard<
+      Pick<PinCommentImageRow, 'storage_path'>
+    >(imageData, imageError, '画像情報の取得に失敗しました');
+    const { data: signedUrlData, error: signedUrlError } =
+      await supabase.storage
+        .from('pin-comment-images')
+        .createSignedUrl(storage_path, 60 * 60);
+    const { signedUrl } = supabaseErrorGuard<{ signedUrl: string }>(
+      signedUrlData,
+      signedUrlError,
+      'サインドURLの取得に失敗しました'
+    );
+    return {
+      id: imageId,
+      src: signedUrl,
+    };
+  } catch {
+    return null;
+  }
 }

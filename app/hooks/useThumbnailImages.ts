@@ -1,52 +1,64 @@
 import { useEffect, useState } from 'react';
-
-export type ThumbnailImage = { id: string; src: string };
+import { getSupabaseUser } from '../../lib/supabaseClient';
+import { ThumbnailImage } from '../utils';
+import {
+  deleteThumbnailById,
+  fetchThumbnailsForUser,
+  uploadThumbnailFile,
+} from '../utils/thumbnail';
 
 export function useThumbnailImages(maxCount: number = 2) {
   const [images, setImages] = useState<ThumbnailImage[]>([]);
 
+  // サムネイル初期取得
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const user = await getSupabaseUser();
+        const userId = user.id;
+        const imgs = await fetchThumbnailsForUser(userId, maxCount);
+        setImages(imgs);
+      } catch {
+        // エラー処理は不要なため削除
+      }
+    };
+    fetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 画像追加
-  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnailUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
-    const reader = new FileReader();
-    reader.onload = (ev) => {
+    try {
+      const user = await getSupabaseUser();
+      const userId = user.id;
+      const newImage = await uploadThumbnailFile(file, userId);
       setImages((prev) => {
-        const newImages = [
-          ...prev,
-          {
-            id: `${Date.now()}-${Math.random()}`,
-            src: ev.target?.result as string,
-          },
-        ].slice(0, maxCount);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('images', JSON.stringify(newImages));
-        }
+        const newImages = [...prev, newImage].slice(0, maxCount);
         return newImages;
       });
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      // エラー処理は不要なため削除
+    }
   };
 
   // 画像削除
-  const handleThumbnailDelete = (id: string) => {
-    setImages((prev) => {
-      const newImages = prev.filter((i) => i.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('images', JSON.stringify(newImages));
-      }
-      return newImages;
-    });
+  const handleThumbnailDelete = async (id: string) => {
+    setImages((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await deleteThumbnailById(id);
+    } catch {
+      // エラー処理は不要なため削除
+    }
   };
 
-  // 初期化: localStorageから画像リスト取得
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('images');
-      if (saved) setImages(JSON.parse(saved));
-    }
-  }, []);
-
-  return { images, handleThumbnailUpload, handleThumbnailDelete };
+  return {
+    images,
+    handleThumbnailUpload,
+    handleThumbnailDelete,
+  };
 }
