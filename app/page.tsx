@@ -1,111 +1,73 @@
 'use client';
-import { useEffect } from 'react';
-import CircleCanvas from './CircleCanvas';
-import CommentPanel from './CommentPanel';
-import { useCircleEditState } from './hooks/useCircleEditState';
-import { useCommentManager } from './hooks/useCommentManager';
-import { useImageUpload } from './hooks/useImageUpload';
-import { useSvgCircleEditor } from './hooks/useSvgCircleEditor';
-import { useUndoManager } from './hooks/useUndoManager';
-import RenderedCircles from './RenderedCircles';
+import { useRouter } from 'next/navigation';
+import { useThumbnailImages } from './hooks/useThumbnailImages';
 
 export default function Home() {
-  const { circles, setCircles, edit, setEdit } = useCircleEditState();
+  const { images, handleThumbnailUpload, handleThumbnailDelete } =
+    useThumbnailImages(2);
+  const router = useRouter();
 
-  // Undo管理用カスタムフック
-  const { undoStack, setUndoStack, isPushingUndo, pushUndo, pushUndoIfNeeded } =
-    useUndoManager({ circles, setCircles, edit, setEdit });
-
-  const imgWidth = 800;
-  const imgHeight = 600;
-
-  // 画像アップロード用
-  const { imgSrc, handleFileChange } = useImageUpload();
-
-  // --- Undo（ESCキー）---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (edit.drawing === null && e.key === 'Escape' && undoStack.length > 0) {
-        setCircles(undoStack[undoStack.length - 1]);
-        setUndoStack((prev) => prev.slice(0, -1));
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack, edit.drawing, setUndoStack, setCircles]);
-
-  // SVG操作系カスタムフック
-  const {
-    handleSvgMouseDown,
-    handleSvgMouseMove,
-    handleSvgMouseUp,
-    handleSvgMouseLeave,
-    handleSvgClick,
-    handleCircleMouseDown,
-    handleCircleRightClick,
-  } = useSvgCircleEditor({
-    circles,
-    setCircles,
-    edit,
-    setEdit,
-    pushUndo,
-    pushUndoIfNeeded,
-    isPushingUndo,
-  });
-
-  // コメント管理用カスタムフック
-  const {
-    commentDraft,
-    handleCommentSave,
-    handleCommentDelete,
-    handleCommentSelect,
-    handleCommentDraftChange,
-  } = useCommentManager({ circles, setCircles, edit, setEdit });
+  const handleThumbnailClick = (id: string) => {
+    router.push(`/edit/${id}`);
+  };
 
   return (
-    <main className='w-screen h-screen flex flex-row items-stretch justify-center bg-white'>
-      {/* 左カラム: 画像＋円描画エリア */}
-      <div className='flex-1 min-w-0 flex items-center justify-center bg-white relative'>
-        <div className='absolute top-6 left-6 z-10'>
-          <input
-            type='file'
-            accept='image/*'
-            onChange={handleFileChange}
-            className='block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
-          />
-        </div>
-        <CircleCanvas
-          edit={edit}
-          imgWidth={imgWidth}
-          imgHeight={imgHeight}
-          imgSrc={imgSrc}
-          onSvgMouseDown={handleSvgMouseDown}
-          onSvgMouseMove={handleSvgMouseMove}
-          onSvgMouseUp={handleSvgMouseUp}
-          onSvgMouseLeave={handleSvgMouseLeave}
-          onSvgClick={handleSvgClick}
-        >
-          <RenderedCircles
-            circles={circles}
-            edit={edit}
-            imgWidth={imgWidth}
-            imgHeight={imgHeight}
-            setEdit={setEdit}
-            handleCircleMouseDown={handleCircleMouseDown}
-            handleCircleRightClick={handleCircleRightClick}
-          />
-        </CircleCanvas>
+    <main className='w-screen h-screen flex flex-col items-center justify-center bg-white'>
+      {/* サムネイル一覧 */}
+      <div className='flex flex-row gap-8 my-12 justify-center items-center'>
+        {images.map((img) => (
+          <div
+            key={img.id}
+            className='relative cursor-pointer border-2 border-gray-300 rounded-xl shadow-lg group flex items-center justify-center'
+            style={{ width: '320px', height: '240px' }}
+            onClick={() => handleThumbnailClick(img.id)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={img.src}
+              alt=''
+              className='w-full h-full object-cover rounded-xl'
+            />
+            <button
+              type='button'
+              className='absolute top-2 right-2 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-red-500 hover:text-white text-gray-500 transition'
+              onClick={(e) => {
+                e.stopPropagation();
+                handleThumbnailDelete(img.id);
+              }}
+              aria-label='サムネイル削除'
+            >
+              <svg
+                width='28'
+                height='28'
+                viewBox='0 0 20 20'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              >
+                <line x1='5' y1='5' x2='15' y2='15' />
+                <line x1='15' y1='5' x2='5' y2='15' />
+              </svg>
+            </button>
+          </div>
+        ))}
+        {images.length < 2 && (
+          <label
+            className='w-[320px] h-[240px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer text-gray-400 text-xl shadow-lg transition-all duration-200 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50'
+            style={{ minWidth: '320px', minHeight: '240px' }}
+          >
+            <input
+              type='file'
+              accept='image/*'
+              onChange={handleThumbnailUpload}
+              className='hidden'
+            />
+            ＋画像追加
+          </label>
+        )}
       </div>
-      {/* 右カラム: コメント編集エリア */}
-      <CommentPanel
-        circles={circles}
-        selectedId={edit.selectedId}
-        commentDraft={commentDraft}
-        onSelect={handleCommentSelect}
-        onDelete={handleCommentDelete}
-        onCommentDraftChange={handleCommentDraftChange}
-        onCommentSave={handleCommentSave}
-      />
     </main>
   );
 }
