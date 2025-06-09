@@ -40,7 +40,6 @@
 
 - Next.js
 - TypeScript
-- react-zoom-pan-pinch（ズーム・パン制御）
 
 ## デプロイ
 

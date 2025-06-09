@@ -1,13 +1,5 @@
 import React from 'react';
-
-// 円の型は親と揃える
-export interface Circle {
-  id: number;
-  x: number;
-  y: number;
-  r: number;
-  comment?: string;
-}
+import type { Circle } from './types';
 
 export interface CommentPanelProps {
   circles: Circle[];

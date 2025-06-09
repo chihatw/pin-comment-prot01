@@ -2,32 +2,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CircleCanvas from './CircleCanvas';
 import CommentPanel from './CommentPanel';
+import type { Circle, EditState } from './types';
 import {
   getCircleLabelPosition,
   getSvgRelativeCoords,
   pushUndo as pushUndoUtil,
 } from './utils';
-
-// 円の型
-interface Circle {
-  id: number;
-  x: number; // 画像上の中心X（%）
-  y: number; // 画像上の中心Y（%）
-  r: number; // 半径（%）
-  comment?: string; // コメント
-}
-
-// 編集用状態の型
-interface EditState {
-  dragId: number | null;
-  dragOffset: { dx: number; dy: number };
-  drawing: { startX: number; startY: number } | null;
-  resizeId: number | null;
-  resizeStart: { mx: number; my: number; r: number } | null;
-  lastMouse: { x: number; y: number } | null;
-  hoverId: number | null;
-  selectedId: number | null; // 追加: クリック選択用
-}
 
 export default function Home() {
   const [circles, setCircles] = useState<Circle[]>([]);
@@ -50,7 +30,7 @@ export default function Home() {
   // Undo履歴に現在の円リストを追加（最大10件）
   const pushUndo = useCallback((prevCircles: Circle[]) => {
     setUndoStack((prev) => pushUndoUtil(prev, prevCircles, 10));
-  }, []);
+  }, []); // pushUndoUtilのみ参照
 
   // --- Undo（ESCキー） ---
   useEffect(() => {
@@ -65,24 +45,27 @@ export default function Home() {
   }, [undoStack, edit.drawing]);
 
   // Undo pushの共通関数
-  const pushUndoIfNeeded = (prevCircles: Circle[]) => {
-    pushUndo(prevCircles);
-    isPushingUndo.current = true;
-  };
+  const pushUndoIfNeeded = useCallback(
+    (prevCircles: Circle[]) => {
+      pushUndo(prevCircles);
+      isPushingUndo.current = true;
+    },
+    [pushUndo]
+  );
 
   // 編集用状態のリセット
-  const resetEditState = useCallback(() => {
-    setEdit({
-      dragId: null,
-      dragOffset: { dx: 0, dy: 0 },
-      drawing: null,
-      resizeId: null,
-      resizeStart: null,
-      lastMouse: null,
-      hoverId: null,
-      selectedId: null, // 追加
-    });
-  }, []);
+  // const resetEditState = useCallback(() => {
+  //   setEdit({
+  //     dragId: null,
+  //     dragOffset: { dx: 0, dy: 0 },
+  //     drawing: null,
+  //     resizeId: null,
+  //     resizeStart: null,
+  //     lastMouse: null,
+  //     hoverId: null,
+  //     selectedId: null, // 追加
+  //   });
+  // }, []);
 
   // --- 編集操作時にUndo履歴をpush ---
   // 円追加
@@ -94,7 +77,7 @@ export default function Home() {
       pushUndo(circles);
       setEdit((prev) => ({ ...prev, drawing: { startX: x, startY: y } }));
     },
-    [edit, circles]
+    [edit, circles, pushUndo]
   );
 
   // --- CircleCanvas用コールバック ---
@@ -105,7 +88,7 @@ export default function Home() {
       const { x, y } = getSvgRelativeCoords(e);
       setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
     },
-    [edit]
+    [edit.drawing] // 不要なedit依存を削除
   );
 
   // SVG上でのドラッグ移動
@@ -124,7 +107,7 @@ export default function Home() {
         )
       );
     },
-    [edit, circles]
+    [edit.dragId, edit.dragOffset, circles, pushUndoIfNeeded]
   );
 
   // 内部用: 描画中のマウスアップ
@@ -145,7 +128,7 @@ export default function Home() {
       }
       setEdit((prev) => ({ ...prev, drawing: null, lastMouse: null }));
     },
-    [edit]
+    [edit.drawing]
   );
 
   // ドラッグ終了
@@ -156,7 +139,7 @@ export default function Home() {
       dragOffset: { dx: 0, dy: 0 },
     }));
     isPushingUndo.current = false;
-  }, [edit]);
+  }, []); // edit依存を削除
 
   const handleSvgMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
@@ -191,7 +174,17 @@ export default function Home() {
         setEdit((prev) => ({ ...prev, lastMouse: { x, y } }));
       }
     },
-    [edit, circles, handleSvgDragMove, handleSvgMouseMoveInner, pushUndo]
+    [
+      edit.resizeId,
+      edit.resizeStart,
+      edit.dragId,
+      edit.drawing,
+      edit.hoverId,
+      circles,
+      handleSvgDragMove,
+      handleSvgMouseMoveInner,
+      pushUndo,
+    ]
   );
 
   const handleSvgMouseUp = useCallback(
@@ -206,7 +199,13 @@ export default function Home() {
       } else if (edit.dragId !== null) handleSvgDragEnd();
       else if (edit.drawing) handleSvgMouseUpInner(e);
     },
-    [edit, handleSvgDragEnd, handleSvgMouseUpInner]
+    [
+      edit.resizeId,
+      edit.dragId,
+      edit.drawing,
+      handleSvgDragEnd,
+      handleSvgMouseUpInner,
+    ]
   );
 
   const handleSvgMouseLeave = useCallback(() => {
@@ -241,7 +240,7 @@ export default function Home() {
         dragOffset: { dx: circle.x - x, dy: circle.y - y },
       }));
     },
-    [circles, edit]
+    [circles]
   );
 
   // 円右クリック（コンテキストメニュー）
@@ -251,7 +250,7 @@ export default function Home() {
       pushUndo(circles);
       setCircles((prev) => prev.filter((c) => c.id !== id));
     },
-    [circles]
+    [circles, pushUndo]
   );
 
   // --- useMemoで円の描画用データを最適化（依存配列をhoverId等に限定）---
@@ -397,7 +396,6 @@ export default function Home() {
       edit.hoverId,
       edit.lastMouse,
       edit.resizeId,
-      edit.resizeStart,
       edit.selectedId,
       handleCircleMouseDown,
       handleCircleRightClick,
@@ -421,7 +419,7 @@ export default function Home() {
     } else {
       setCommentDraft('');
     }
-  }, [selectedCircle?.id]);
+  }, [selectedCircle]);
 
   // コメント保存
   const handleCommentSave = () => {

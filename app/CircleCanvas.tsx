@@ -1,23 +1,5 @@
 import React from 'react';
-
-export interface Circle {
-  id: number;
-  x: number;
-  y: number;
-  r: number;
-  comment?: string;
-}
-
-export interface EditState {
-  dragId: number | null;
-  dragOffset: { dx: number; dy: number };
-  drawing: { startX: number; startY: number } | null;
-  resizeId: number | null;
-  resizeStart: { mx: number; my: number; r: number } | null;
-  lastMouse: { x: number; y: number } | null;
-  hoverId: number | null;
-  selectedId: number | null;
-}
+import type { Circle, EditState } from './types';
 
 export interface CircleCanvasProps {
   circles: Circle[];
@@ -33,7 +15,7 @@ export interface CircleCanvasProps {
 }
 
 const CircleCanvas: React.FC<CircleCanvasProps> = ({
-  circles,
+  // circles,
   edit,
   imgWidth,
   imgHeight,
@@ -57,6 +39,7 @@ const CircleCanvas: React.FC<CircleCanvasProps> = ({
       }}
     >
       {/* 画像 */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src='/sample.jpg'
         width={imgWidth}

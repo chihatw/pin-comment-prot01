@@ -1,3 +1,5 @@
+import type { Circle } from './types';
+
 // SVG座標変換ユーティリティ
 export function getSvgRelativeCoords(
   e: React.MouseEvent<SVGSVGElement | SVGCircleElement, MouseEvent>,
@@ -38,8 +40,8 @@ export function getCircleLabelPosition(
 
 // Undoスタック管理ユーティリティ
 export function pushUndo(
-  prevStack: Array<any[]>,
-  prevCircles: any[],
+  prevStack: Array<Circle[]>,
+  prevCircles: Circle[],
   maxStack: number = 10
 ) {
   const newStack = [...prevStack, prevCircles.map((c) => ({ ...c }))];
