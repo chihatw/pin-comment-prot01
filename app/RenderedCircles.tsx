@@ -8,7 +8,7 @@ interface RenderedCirclesProps {
   imgWidth: number;
   imgHeight: number;
   setEdit: React.Dispatch<React.SetStateAction<EditState>>;
-  handleCircleMouseDown: (id: number, e: React.MouseEvent) => void;
+  handleCircleMouseDown: (id: string, e: React.MouseEvent) => void;
 }
 
 const RenderedCircles: React.FC<RenderedCirclesProps> = ({
@@ -115,6 +115,10 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
                 cursor:
                   edit.hoverId === c.id && !edit.resizeId ? 'move' : 'grab',
                 filter: 'drop-shadow(0 2px 6px #b3e5fc66)',
+                opacity:
+                  edit.selectedId !== null && edit.selectedId !== c.id
+                    ? 0.3
+                    : 1,
               }}
             />
             {(() => {

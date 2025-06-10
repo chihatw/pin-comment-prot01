@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Circle, EditState } from '../types';
 import { getSvgRelativeCoords } from '../utils';
 
@@ -86,11 +87,15 @@ export function useSvgCircleEditor({
       if (r > 1) {
         const centerX = (edit.drawing.startX + x) / 2;
         const centerY = (edit.drawing.startY + y) / 2;
-        const newId = Date.now();
-        setCircles((prev) => [
-          ...prev,
-          { id: newId, x: centerX, y: centerY, r },
-        ]);
+        const newId = uuidv4();
+        setCircles((prev) => {
+          const maxIndex =
+            prev.length > 0 ? Math.max(...prev.map((c) => c.index ?? 0)) : -1;
+          return [
+            ...prev,
+            { id: newId, x: centerX, y: centerY, r, index: maxIndex + 1 },
+          ];
+        });
 
         setEdit((prev: EditState) => ({
           ...prev,
@@ -220,7 +225,7 @@ export function useSvgCircleEditor({
 
   // 円ドラッグ開始
   const handleCircleMouseDown = useCallback(
-    (id: number, e: React.MouseEvent) => {
+    (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
       const { x, y } = getSvgRelativeCoords(
         e as React.MouseEvent<SVGCircleElement, MouseEvent>

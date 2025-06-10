@@ -16,6 +16,8 @@ export function useCommentManager({
   setEdit,
 }: UseCommentManagerProps) {
   const [commentDraft, setCommentDraft] = useState('');
+  // 削除予定IDのstateを追加
+  const [deletedCircleIds, setDeletedCircleIds] = useState<string[]>([]);
 
   // localStorage同期
   useCommentDraftStorage(commentDraft, setCommentDraft);
@@ -46,15 +48,22 @@ export function useCommentManager({
   };
 
   // コメント削除
-  const handleCommentDelete = (id: number) => {
-    setCircles((prev) => prev.filter((c) => c.id !== id));
+  const handleCommentDelete = (id: string) => {
+    setCircles((prev) => {
+      const filtered = prev.filter((c) => c.id !== id);
+      return filtered
+        .sort((a, b) => a.index - b.index)
+        .map((c, i) => ({ ...c, index: i }));
+    });
     setEdit((prev) =>
       prev.selectedId === id ? { ...prev, selectedId: null } : prev
     );
+    // 削除IDを記録
+    setDeletedCircleIds((prev) => [...prev, id]);
   };
 
   // コメント選択
-  const handleCommentSelect = (id: number | null) => {
+  const handleCommentSelect = (id: string | null) => {
     setEdit((prev) => ({ ...prev, selectedId: id }));
   };
 
@@ -71,5 +80,7 @@ export function useCommentManager({
     handleCommentDelete,
     handleCommentSelect,
     handleCommentDraftChange,
+    deletedCircleIds, // 追加
+    setDeletedCircleIds, // 追加
   };
 }

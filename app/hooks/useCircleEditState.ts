@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Circle, EditState } from '../types';
 import { getInitialCircles, useCircleStorage } from './useCircleStorage';
 
@@ -13,12 +13,27 @@ const initialEditState: EditState = {
   selectedId: null,
 };
 
-export function useCircleEditState() {
-  const [circles, setCircles] = useState<Circle[]>(getInitialCircles);
+export function useCircleEditState(imageId?: string) {
+  const [circles, setCircles] = useState<Circle[]>([]);
   const [edit, setEdit] = useState<EditState>(initialEditState);
+  // 削除ID管理用stateを追加
+  const [deletedCircleIds, setDeletedCircleIds] = useState<string[]>([]);
 
-  // localStorage同期
-  useCircleStorage(circles);
+  // Supabaseから初期データ取得
+  useEffect(() => {
+    if (!imageId) return;
+    getInitialCircles(imageId).then((data) => {
+      setCircles(data);
+    });
+  }, [imageId]);
+
+  // Supabase同期
+  useCircleStorage(
+    circles,
+    imageId || '',
+    deletedCircleIds,
+    setDeletedCircleIds
+  );
 
   // 編集用状態のリセット
   const resetEditState = useCallback(() => {
@@ -31,5 +46,7 @@ export function useCircleEditState() {
     edit,
     setEdit,
     resetEditState,
+    deletedCircleIds, // 追加
+    setDeletedCircleIds, // 追加
   };
 }

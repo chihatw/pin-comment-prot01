@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button';
 import CircleCanvas from '../../CircleCanvas';
 import CommentPanel from '../../CommentPanel';
 import { useCircleEditState } from '../../hooks/useCircleEditState';
+import { useCircleStorage } from '../../hooks/useCircleStorage';
 import { useCommentManager } from '../../hooks/useCommentManager';
 import { useImageSrc } from '../../hooks/useImageSrc';
 import { useSvgCircleEditor } from '../../hooks/useSvgCircleEditor';
@@ -20,7 +21,9 @@ export default function EditPage() {
   const { imgSrc, isLoading, error: imgError } = useImageSrc(id);
 
   // --- 既存の編集UIを流用 ---
-  const { circles, setCircles, edit, setEdit } = useCircleEditState();
+  const { circles, setCircles, edit, setEdit } = useCircleEditState(
+    id as string
+  );
   const { isPushingUndo, pushUndo, pushUndoIfNeeded } = useUndoManager({
     circles,
     setCircles,
@@ -49,7 +52,16 @@ export default function EditPage() {
     handleCommentDelete,
     handleCommentSelect,
     handleCommentDraftChange,
+    deletedCircleIds,
+    setDeletedCircleIds,
   } = useCommentManager({ circles, setCircles, edit, setEdit });
+
+  useCircleStorage(
+    circles,
+    id as string,
+    deletedCircleIds,
+    setDeletedCircleIds
+  );
 
   if (isLoading) {
     return (

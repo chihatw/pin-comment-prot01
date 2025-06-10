@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from '../components/ui/button';
 import type { Circle } from './types';
 
 export interface CommentPanelProps {
   circles: Circle[];
-  selectedId: number | null;
+  selectedId: string | null;
   commentDraft: string;
-  onSelect: (id: number | null) => void;
-  onDelete: (id: number) => void;
+  onSelect: (id: string | null) => void;
+  onDelete: (id: string) => void;
   onCommentDraftChange: (value: string) => void;
   onCommentSave: () => void;
 }
@@ -21,13 +21,32 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   onCommentDraftChange,
   onCommentSave,
 }) => {
+  // input用refにリネーム・型変更
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  // 前回保存時の値を保持
+  const lastSavedValue = useRef<string>(commentDraft);
+
+  useEffect(() => {
+    if (selectedId !== null) {
+      inputRef.current?.focus();
+    }
+  }, [selectedId]);
+
+  // 保存時にlastSavedValueを更新
+  const handleSave = () => {
+    onCommentSave();
+    lastSavedValue.current = commentDraft;
+  };
+
+  // textareaのonBlurで値が変わっていれば保存
+  const handleBlur = () => {
+    if (commentDraft !== lastSavedValue.current) {
+      handleSave();
+    }
+  };
+
   return (
-    <div
-      className='w-[400px] p-8 flex flex-col gap-4 shadow-[-4px_0_24px_#b3e5fc55]'
-      style={{
-        background: 'linear-gradient(135deg, #ffffff 60%, #e1f5fe 100%)',
-      }}
-    >
+    <div className='w-[400px] p-8 flex flex-col gap-4 bg-white'>
       <h2 className='m-0 text-2xl font-bold text-blue-700'>円のコメント</h2>
       <div className='flex-1 flex flex-col gap-4 overflow-y-auto pr-2'>
         {/* コメント一覧 */}
@@ -56,26 +75,31 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      onCommentSave();
+                      handleSave();
                       onSelect(null); // 保存後に選択解除
                     }}
                     className='flex items-center gap-2 w-full'
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <textarea
+                    <input
+                      ref={inputRef}
+                      type='text'
                       value={commentDraft}
                       onChange={(e) => onCommentDraftChange(e.target.value)}
-                      className='w-full h-[28px] border-0 border-b border-blue-100 bg-transparent text-sm text-[#333] resize-none outline-none focus:bg-blue-50 hover:bg-blue-50 transition-colors shadow-none px-0 py-0 rounded-none'
+                      onBlur={handleBlur}
+                      className='w-full h-[28px] border-0  bg-transparent text-sm text-[#333] resize-none outline-none transition-colors shadow-none px-0 py-0 rounded-none'
                       style={{
                         minHeight: 24,
                         maxHeight: 48,
                         boxShadow: 'none',
+                        fontSize: '15px',
+                        lineHeight: '1.8',
                       }}
                       placeholder='コメントを入力...'
                       aria-label='コメント'
                     />
                     <Button
-                      className='ml-1 px-1 py-0 text-xs rounded-none bg-transparent text-blue-500 border-none shadow-none hover:text-blue-700 hover:bg-transparent focus:bg-transparent active:bg-transparent hover:underline transition-colors min-w-0 h-auto'
+                      className='ml-1 px-1 py-0 text-xs rounded-none bg-transparent text-blue-500 border-none shadow-none hover:text-blue-700 hover:bg-transparent focus:bg-transparent active:bg-transparent hover:underline transition-colors min-w-0 h-auto focus:ring-0 focus:ring-offset-0'
                       aria-label='コメントを保存'
                       type='submit'
                       tabIndex={-1}
