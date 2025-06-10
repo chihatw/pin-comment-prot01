@@ -34,7 +34,6 @@ export default function EditPage() {
     handleSvgMouseLeave,
     handleSvgClick,
     handleCircleMouseDown,
-    handleCircleRightClick,
   } = useSvgCircleEditor({
     circles,
     setCircles,
@@ -108,7 +107,6 @@ export default function EditPage() {
               imgHeight={imgHeight}
               setEdit={setEdit}
               handleCircleMouseDown={handleCircleMouseDown}
-              handleCircleRightClick={handleCircleRightClick}
             />
           </CircleCanvas>
         </div>

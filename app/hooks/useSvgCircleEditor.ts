@@ -83,10 +83,21 @@ export function useSvgCircleEditor({
       if (r > 1) {
         const centerX = (edit.drawing.startX + x) / 2;
         const centerY = (edit.drawing.startY + y) / 2;
+        const newId = Date.now();
         setCircles((prev) => [
           ...prev,
-          { id: Date.now(), x: centerX, y: centerY, r },
+          { id: newId, x: centerX, y: centerY, r },
         ]);
+        // debug
+        setTimeout(() => {
+          setEdit((prev: EditState) => ({
+            ...prev,
+            drawing: null,
+            lastMouse: null,
+            selectedId: newId, // 新規円を選択状態に
+          }));
+        }, 50);
+        return;
       }
       setEdit((prev: EditState) => ({
         ...prev,
@@ -135,7 +146,13 @@ export function useSvgCircleEditor({
         const rect = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
-        setEdit((prev: EditState) => ({ ...prev, lastMouse: { x, y } }));
+        setTimeout(() => {
+          setEdit((prev: EditState) => ({
+            ...prev,
+            lastMouse: { x, y },
+            selectedId: null,
+          }));
+        }, 50); // 遅延を入れて描画を安定させる
       }
     },
     [
@@ -215,16 +232,6 @@ export function useSvgCircleEditor({
     [circles, setEdit]
   );
 
-  // 円右クリック
-  const handleCircleRightClick = useCallback(
-    (id: number, e: React.MouseEvent) => {
-      e.preventDefault();
-      pushUndo(circles);
-      setCircles((prev) => prev.filter((c) => c.id !== id));
-    },
-    [circles, pushUndo, setCircles]
-  );
-
   return {
     handleSvgMouseDown,
     handleSvgMouseMove,
@@ -232,6 +239,5 @@ export function useSvgCircleEditor({
     handleSvgMouseLeave,
     handleSvgClick,
     handleCircleMouseDown,
-    handleCircleRightClick,
   };
 }

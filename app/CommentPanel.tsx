@@ -21,7 +21,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   onCommentDraftChange,
   onCommentSave,
 }) => {
-  const selectedCircle = circles.find((c) => c.id === selectedId) ?? null;
   return (
     <div
       className='w-[400px] p-8 flex flex-col gap-4 shadow-[-4px_0_24px_#b3e5fc55]'

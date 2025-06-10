@@ -9,7 +9,6 @@ interface RenderedCirclesProps {
   imgHeight: number;
   setEdit: React.Dispatch<React.SetStateAction<EditState>>;
   handleCircleMouseDown: (id: number, e: React.MouseEvent) => void;
-  handleCircleRightClick: (id: number, e: React.MouseEvent) => void;
 }
 
 const RenderedCircles: React.FC<RenderedCirclesProps> = ({
@@ -19,7 +18,6 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
   imgHeight,
   setEdit,
   handleCircleMouseDown,
-  handleCircleRightClick,
 }) => {
   const rendered = useMemo(
     () =>
@@ -91,6 +89,8 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
             }}
             onClick={(e) => {
               e.stopPropagation();
+              // debug
+              console.log('Circle clicked');
               setEdit((prev) => ({ ...prev, selectedId: c.id }));
             }}
           >
@@ -110,7 +110,6 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
                   ? (e) => handleCircleMouseDown(c.id, e)
                   : undefined
               }
-              onContextMenu={(e) => handleCircleRightClick(c.id, e)}
               style={{
                 cursor:
                   edit.hoverId === c.id && !edit.resizeId ? 'move' : 'grab',
@@ -157,7 +156,7 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
       edit.resizeId,
       edit.selectedId,
       handleCircleMouseDown,
-      handleCircleRightClick,
+
       imgWidth,
       imgHeight,
       setEdit,

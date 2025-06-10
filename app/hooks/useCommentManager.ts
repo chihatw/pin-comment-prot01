@@ -54,7 +54,7 @@ export function useCommentManager({
   };
 
   // コメント選択
-  const handleCommentSelect = (id: number) => {
+  const handleCommentSelect = (id: number | null) => {
     setEdit((prev) => ({ ...prev, selectedId: id }));
   };
 
