@@ -686,7 +686,6 @@ export type Database = {
           created_at: string | null;
           file_name: string | null;
           id: string;
-          image_url: string;
           storage_path: string;
           user_id: string;
         };
@@ -694,7 +693,6 @@ export type Database = {
           created_at?: string | null;
           file_name?: string | null;
           id?: string;
-          image_url: string;
           storage_path: string;
           user_id: string;
         };
@@ -702,7 +700,6 @@ export type Database = {
           created_at?: string | null;
           file_name?: string | null;
           id?: string;
-          image_url?: string;
           storage_path?: string;
           user_id?: string;
         };

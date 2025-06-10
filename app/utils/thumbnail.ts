@@ -68,7 +68,6 @@ export async function uploadThumbnailFile(
     'insert_thumbnail_with_image',
     {
       p_user_id: userId,
-      p_image_url: signedUrl,
       p_storage_path: filePath,
       p_file_name: file.name,
     }
