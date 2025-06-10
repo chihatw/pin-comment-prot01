@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Circle, EditState } from '../types';
 import { getSvgRelativeCoords } from '../utils';
 
@@ -21,6 +21,9 @@ export function useSvgCircleEditor({
   pushUndoIfNeeded,
   isPushingUndo,
 }: UseSvgCircleEditorProps) {
+  // 新規円追加直後のクリックによる選択解除を防ぐフラグ
+  const justAddedCircleRef = useRef(false);
+
   // 円追加
   const handleSvgMouseDown = useCallback(
     (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
@@ -88,15 +91,14 @@ export function useSvgCircleEditor({
           ...prev,
           { id: newId, x: centerX, y: centerY, r },
         ]);
-        // debug
-        setTimeout(() => {
-          setEdit((prev: EditState) => ({
-            ...prev,
-            drawing: null,
-            lastMouse: null,
-            selectedId: newId, // 新規円を選択状態に
-          }));
-        }, 50);
+
+        setEdit((prev: EditState) => ({
+          ...prev,
+          drawing: null,
+          lastMouse: null,
+          selectedId: newId, // 新規円を選択状態に
+        }));
+        justAddedCircleRef.current = true;
         return;
       }
       setEdit((prev: EditState) => ({
@@ -146,13 +148,10 @@ export function useSvgCircleEditor({
         const rect = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
-        setTimeout(() => {
-          setEdit((prev: EditState) => ({
-            ...prev,
-            lastMouse: { x, y },
-            selectedId: null,
-          }));
-        }, 50); // 遅延を入れて描画を安定させる
+        setEdit((prev: EditState) => ({
+          ...prev,
+          lastMouse: { x, y },
+        }));
       }
     },
     [
@@ -212,6 +211,10 @@ export function useSvgCircleEditor({
 
   // SVG全体click
   const handleSvgClick = useCallback(() => {
+    if (justAddedCircleRef.current) {
+      justAddedCircleRef.current = false;
+      return;
+    }
     setEdit((prev: EditState) => ({ ...prev, selectedId: null }));
   }, [setEdit]);
 

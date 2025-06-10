@@ -89,9 +89,10 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              // debug
-              console.log('Circle clicked');
-              setEdit((prev) => ({ ...prev, selectedId: c.id }));
+              setEdit((prev) => ({
+                ...prev,
+                selectedId: prev.selectedId === c.id ? null : c.id,
+              }));
             }}
           >
             <circle
