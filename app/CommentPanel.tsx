@@ -6,7 +6,7 @@ export interface CommentPanelProps {
   circles: Circle[];
   selectedId: number | null;
   commentDraft: string;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | null) => void;
   onDelete: (id: number) => void;
   onCommentDraftChange: (value: string) => void;
   onCommentSave: () => void;
@@ -48,17 +48,52 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
             ].join(' ')}
             onClick={() => onSelect(circle.id)}
           >
-            {/* 番号バッジのみ表示 */}
             <div className='flex gap-2 items-center'>
               <div className='w-8 h-8 rounded-full bg-blue-100 text-sky-600 flex items-center justify-center font-bold text-base flex-shrink-0'>
                 {idx + 1}
               </div>
               <div className='text-[15px] text-[#333] flex-1 min-h-6'>
-                {circle.comment || (
-                  <span className='text-[#bbb]'>（コメントなし）</span>
+                {selectedId === circle.id ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      onCommentSave();
+                      onSelect(null); // 保存後に選択解除
+                    }}
+                    className='flex items-center gap-2 w-full'
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <textarea
+                      value={commentDraft}
+                      onChange={(e) => onCommentDraftChange(e.target.value)}
+                      className='w-full h-[28px] border-0 border-b border-blue-100 bg-transparent text-sm text-[#333] resize-none outline-none focus:bg-blue-50 hover:bg-blue-50 transition-colors shadow-none px-0 py-0 rounded-none'
+                      style={{
+                        minHeight: 24,
+                        maxHeight: 48,
+                        boxShadow: 'none',
+                      }}
+                      placeholder='コメントを入力...'
+                      aria-label='コメント'
+                    />
+                    <Button
+                      onClick={() => {
+                        onCommentSave();
+                        onSelect(null); // 保存後に選択解除
+                      }}
+                      className='ml-1 px-1 py-0 text-xs rounded-none bg-transparent text-blue-500 border-none shadow-none hover:text-blue-700 hover:bg-transparent focus:bg-transparent active:bg-transparent hover:underline transition-colors min-w-0 h-auto'
+                      aria-label='コメントを保存'
+                      type='submit'
+                      tabIndex={-1}
+                    >
+                      保存
+                    </Button>
+                  </form>
+                ) : (
+                  circle.comment || (
+                    <span className='text-[#bbb]'>（コメントなし）</span>
+                  )
                 )}
               </div>
-              {/* 削除ボタン（アイコン） */}
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -91,30 +126,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
           </div>
         ))}
       </div>
-      {/* コメント入力エリアを下端に固定 */}
-      {selectedCircle && (
-        <div className='mt-6 border-t border-blue-100 pt-4 flex flex-col gap-2'>
-          <div className='font-bold text-blue-700 text-[15px]'>
-            円 {circles.findIndex((c) => c.id === selectedCircle.id) + 1}{' '}
-            のコメント編集
-          </div>
-          <textarea
-            value={commentDraft}
-            onChange={(e) => onCommentDraftChange(e.target.value)}
-            className='w-full h-[60px] rounded border border-blue-200 p-2 text-sm text-[#333] resize-none outline-none transition-colors'
-            placeholder='コメントを入力...'
-            aria-label='コメント'
-          />
-          <Button
-            onClick={onCommentSave}
-            className='self-end bg-blue-700 text-white border-none rounded px-4 py-2 cursor-pointer font-bold transition-colors hover:bg-blue-800'
-            aria-label='コメントを保存'
-            type='button'
-          >
-            保存
-          </Button>
-        </div>
-      )}
     </div>
   );
 };
