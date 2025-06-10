@@ -75,10 +75,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
                       aria-label='コメント'
                     />
                     <Button
-                      onClick={() => {
-                        onCommentSave();
-                        onSelect(null); // 保存後に選択解除
-                      }}
                       className='ml-1 px-1 py-0 text-xs rounded-none bg-transparent text-blue-500 border-none shadow-none hover:text-blue-700 hover:bg-transparent focus:bg-transparent active:bg-transparent hover:underline transition-colors min-w-0 h-auto'
                       aria-label='コメントを保存'
                       type='submit'
