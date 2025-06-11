@@ -1,3 +1,13 @@
+/**
+ * 画像IDからSupabase Storageの署名付き画像URLを取得し、Reactの状態として管理するカスタムフック。
+ *
+ * @param {string | string[] | undefined} id - 画像の一意なID、またはID配列、または未定義。
+ * @returns {{ imgSrc: string | null, isLoading: boolean, error: string | null }}
+ *   imgSrc: 取得した画像の署名付きURL（取得失敗時はnull）
+ *   isLoading: 取得中かどうかのフラグ
+ *   error: エラー内容（取得失敗時のみ）
+ */
+
 import { useEffect, useState } from 'react';
 import { fetchImageWithSignedUrl } from '../utils';
 

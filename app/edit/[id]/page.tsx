@@ -12,6 +12,18 @@ import { useImageSrc } from '../../hooks/useImageSrc';
 import { useSvgCircleEditor } from '../../hooks/useSvgCircleEditor';
 import { useUndoManager } from '../../hooks/useUndoManager';
 
+/**
+ * 画像IDで指定された画像に対して、円注釈とコメントを編集できるページコンポーネント。
+ *
+ * - Supabase Storageから画像を取得し表示する
+ * - 画像上に円（注釈）を描画・編集・削除できる
+ * - 円ごとにコメントを追加・編集・削除できる
+ * - 編集内容はUndo/Redoや状態管理フックで管理
+ * - 画像が見つからない場合やロード中のUIも表示
+ *
+ * @returns {JSX.Element} 画像注釈編集UIを持つReactページコンポーネント
+ */
+
 export default function EditPage() {
   const { id } = useParams();
   const router = useRouter();
