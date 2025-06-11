@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Button } from '../components/ui/button';
-import type { Circle } from './types';
+
+import { Circle } from '@/types/circle';
+import { Button } from './ui/button';
 
 export interface CommentPanelProps {
   circles: Circle[];

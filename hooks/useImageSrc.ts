@@ -8,8 +8,8 @@
  *   error: エラー内容（取得失敗時のみ）
  */
 
+import { fetchImageWithSignedUrl } from '@/utils/image';
 import { useEffect, useState } from 'react';
-import { fetchImageWithSignedUrl } from '../utils';
 
 export function useImageSrc(id: string | string[] | undefined) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);

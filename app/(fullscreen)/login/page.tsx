@@ -1,16 +1,16 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Button } from '../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { supabase } from '../../lib/supabaseClient';
+} from '../../../components/ui/card';
+import { Input } from '../../../components/ui/input';
+import { supabase } from '../../../lib/supabaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

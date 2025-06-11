@@ -1,5 +1,6 @@
+import { Circle } from '@/types/circle';
+import { EditState } from '@/types/editState';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Circle, EditState } from '../types';
 
 interface UseUndoManagerProps {
   circles: Circle[];

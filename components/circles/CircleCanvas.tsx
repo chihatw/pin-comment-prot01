@@ -20,8 +20,8 @@
  * @returns {JSX.Element}
  */
 
+import { EditState } from '@/types/editState';
 import React from 'react';
-import type { EditState } from '../../app/types';
 
 export interface CircleCanvasProps {
   edit: EditState;

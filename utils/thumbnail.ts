@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../../lib/supabaseClient';
-import type { Database } from '../types/supabase';
-import { fetchImageWithSignedUrl, ThumbnailImage } from '../utils';
+
+import { supabase } from '@/lib/supabaseClient';
+import { Database } from '@/types/supabase';
+import { fetchImageWithSignedUrl, ThumbnailImage } from './image';
 import { supabaseErrorGuard } from './supabaseUtils';
 
 export type PinCommentThumbnail = { image_id: string };

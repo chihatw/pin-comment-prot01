@@ -1,7 +1,7 @@
+import { Circle } from '@/types/circle';
 import debounce from 'lodash/debounce';
 import { useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import type { Circle } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 // imageIdを引数にして、その画像に紐づくcirclesを取得
 export async function getInitialCircles(imageId: string): Promise<Circle[]> {

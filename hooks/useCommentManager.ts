@@ -1,5 +1,6 @@
+import { Circle } from '@/types/circle';
+import { EditState } from '@/types/editState';
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
-import type { Circle, EditState } from '../types';
 import { useCommentDraftStorage } from './useCommentDraftStorage';
 
 interface UseCommentManagerProps {
@@ -9,6 +10,25 @@ interface UseCommentManagerProps {
   setEdit: Dispatch<SetStateAction<EditState>>;
 }
 
+/**
+ * コメント管理用のカスタムフック。
+ *
+ * @param {Object} props - フックのプロパティ
+ * @param {Circle[]} props.circles - コメント付き円オブジェクトの配列
+ * @param {Dispatch<SetStateAction<Circle[]>>} props.setCircles - circlesの状態を更新する関数
+ * @param {EditState} props.edit - 編集状態（選択中の円IDなど）
+ * @param {Dispatch<SetStateAction<EditState>>} props.setEdit - editの状態を更新する関数
+ * @returns {Object} - コメント管理に必要な状態と操作関数群
+ *   @property {string} commentDraft - コメント入力欄のドラフト値
+ *   @property {function} setCommentDraft - コメントドラフトのsetter
+ *   @property {Circle|null} selectedCircle - 選択中の円オブジェクト
+ *   @property {function} handleCommentSave - コメント保存処理
+ *   @property {function} handleCommentDelete - コメント削除処理
+ *   @property {function} handleCommentSelect - コメント選択処理
+ *   @property {function} handleCommentDraftChange - コメントドラフト変更処理
+ *   @property {string[]} deletedCircleIds - 削除された円のIDリスト
+ *   @property {function} setDeletedCircleIds - 削除IDリストのsetter
+ */
 export function useCommentManager({
   circles,
   setCircles,

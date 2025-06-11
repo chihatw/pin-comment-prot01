@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { getSupabaseUser } from '../../lib/supabaseClient';
-import { ThumbnailImage } from '../utils';
+import { getSupabaseUser } from '@/lib/supabaseClient';
+import { ThumbnailImage } from '@/utils/image';
 import {
   deleteThumbnailById,
   fetchThumbnailsForUser,
   uploadThumbnailFile,
-} from '../utils/thumbnail';
+} from '@/utils/thumbnail';
+import { useEffect, useState } from 'react';
 
 export function useThumbnailImages(maxCount: number = 2) {
   const [images, setImages] = useState<ThumbnailImage[]>([]);

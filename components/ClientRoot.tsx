@@ -1,8 +1,8 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
-import { Button } from '../components/ui/button';
+import { useAuthGuard } from '../hooks/useAuthGuard';
 import { supabase } from '../lib/supabaseClient';
-import { useAuthGuard } from './hooks/useAuthGuard';
+import { Button } from './ui/button';
 
 function Header() {
   const router = useRouter();

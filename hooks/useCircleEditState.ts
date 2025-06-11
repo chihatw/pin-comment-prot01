@@ -1,5 +1,7 @@
+import { Circle } from '@/types/circle';
 import { useCallback, useEffect, useState } from 'react';
-import type { Circle, EditState } from '../types';
+
+import { EditState } from '@/types/editState';
 import { getInitialCircles, useCircleStorage } from './useCircleStorage';
 
 const initialEditState: EditState = {

@@ -5,9 +5,11 @@
  * - props: circles, edit, imgWidth, imgHeight, setEdit, handleCircleMouseDown
  */
 
+import { Circle } from '@/types/circle';
 import React, { useMemo } from 'react';
-import { Circle, EditState } from '../../app/types';
-import { getCircleLabelPosition } from '../../app/utils';
+
+import { EditState } from '@/types/editState';
+import { getCircleLabelPosition } from '@/utils/svg';
 
 interface RenderedCirclesProps {
   circles: Circle[];

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Circle } from '../../app/types';
-import { getCircleLabelPosition } from '../../app/utils';
+
+import { Circle } from '@/types/circle';
+import { getCircleLabelPosition } from '@/utils/svg';
 
 interface CircleDisplayProps {
   circles: Circle[];

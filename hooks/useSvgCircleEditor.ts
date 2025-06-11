@@ -1,7 +1,9 @@
+import { Circle } from '@/types/circle';
 import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Circle, EditState } from '../types';
-import { getSvgRelativeCoords } from '../utils';
+
+import { EditState } from '@/types/editState';
+import { getSvgRelativeCoords } from '@/utils/svg';
 
 interface UseSvgCircleEditorProps {
   circles: Circle[];
