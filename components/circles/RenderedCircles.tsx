@@ -1,6 +1,13 @@
+/**
+ * RenderedCircles コンポーネント
+ * - circles配列を受け取り、SVG上に円・ラベル（番号）・リサイズハンドルを描画する編集用コンポーネントです。
+ * - 選択・ホバー・リサイズなどの編集機能を持ち、ユーザー操作に応じて見た目や状態が変化します。
+ * - props: circles, edit, imgWidth, imgHeight, setEdit, handleCircleMouseDown
+ */
+
 import React, { useMemo } from 'react';
-import { Circle, EditState } from './types';
-import { getCircleLabelPosition } from './utils';
+import { Circle, EditState } from '../../app/types';
+import { getCircleLabelPosition } from '../../app/utils';
 
 interface RenderedCirclesProps {
   circles: Circle[];
@@ -161,7 +168,6 @@ const RenderedCircles: React.FC<RenderedCirclesProps> = ({
       edit.resizeId,
       edit.selectedId,
       handleCircleMouseDown,
-
       imgWidth,
       imgHeight,
       setEdit,

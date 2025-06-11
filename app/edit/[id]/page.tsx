@@ -1,7 +1,9 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '../../../components/ui/button';
-import CircleCanvas from '../../CircleCanvas';
+
+import CircleCanvas from '@/components/circles/CircleCanvas';
+import RenderedCircles from '@/components/circles/RenderedCircles';
 import CommentPanel from '../../CommentPanel';
 import { useCircleEditState } from '../../hooks/useCircleEditState';
 import { useCircleStorage } from '../../hooks/useCircleStorage';
@@ -9,7 +11,6 @@ import { useCommentManager } from '../../hooks/useCommentManager';
 import { useImageSrc } from '../../hooks/useImageSrc';
 import { useSvgCircleEditor } from '../../hooks/useSvgCircleEditor';
 import { useUndoManager } from '../../hooks/useUndoManager';
-import RenderedCircles from '../../RenderedCircles';
 
 export default function EditPage() {
   const { id } = useParams();

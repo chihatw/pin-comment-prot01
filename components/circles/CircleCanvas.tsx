@@ -1,5 +1,27 @@
+/**
+ * 画像上に円を描画・編集するためのインタラクティブなキャンバスコンポーネント。
+ *
+ * - 背景画像の上にSVGレイヤーを重ね、円の描画・編集をマウス操作で行う
+ * - 編集状態やマウスイベントをpropsで受け取り、childrenで既存の円を描画
+ * - 描画中の円プレビューも表示
+ *
+ * @component
+ * @param {Object} props - コンポーネントのprops
+ * @param {EditState} props.edit - 編集状態
+ * @param {number} props.imgWidth - 画像の幅（px）
+ * @param {number} props.imgHeight - 画像の高さ（px）
+ * @param {string} [props.imgSrc] - 画像のURL
+ * @param {(e: React.MouseEvent<SVGSVGElement, MouseEvent>) => void} props.onSvgMouseDown - SVGのmousedownイベント
+ * @param {(e: React.MouseEvent<SVGSVGElement, MouseEvent>) => void} props.onSvgMouseMove - SVGのmousemoveイベント
+ * @param {(e: React.MouseEvent<SVGSVGElement, MouseEvent>) => void} props.onSvgMouseUp - SVGのmouseupイベント
+ * @param {() => void} props.onSvgMouseLeave - SVGのmouseleaveイベント
+ * @param {() => void} props.onSvgClick - SVGのclickイベント
+ * @param {React.ReactNode} [props.children] - 既存の円を描画する要素
+ * @returns {JSX.Element}
+ */
+
 import React from 'react';
-import type { EditState } from './types';
+import type { EditState } from '../../app/types';
 
 export interface CircleCanvasProps {
   edit: EditState;
