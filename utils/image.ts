@@ -42,3 +42,26 @@ export async function fetchImageWithSignedUrl(
     return null;
   }
 }
+
+/**
+ * アスペクト比を維持して、指定した最大幅・最大高さに収まるサイズを計算する
+ * @param naturalWidth 画像の元の幅
+ * @param naturalHeight 画像の元の高さ
+ * @param maxWidth 最大幅
+ * @param maxHeight 最大高さ
+ * @returns { width: number, height: number }
+ */
+export function getContainSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number } {
+  let w = maxWidth;
+  let h = Math.round((naturalHeight / naturalWidth) * w);
+  if (h > maxHeight) {
+    h = maxHeight;
+    w = Math.round((naturalWidth / naturalHeight) * h);
+  }
+  return { width: w, height: h };
+}

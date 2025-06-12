@@ -33,8 +33,6 @@ export function useCircleStorage(
           .from('pin_comment_circles')
           .delete()
           .eq('image_id', imageId);
-        // 削除IDもリセット
-        setDeletedCircleIds([]);
         return;
       }
       // 削除IDがあれば削除
@@ -49,7 +47,6 @@ export function useCircleStorage(
             deleteError
           );
         }
-        setDeletedCircleIds([]); // 削除IDリセット
       }
       // 各circleにimage_idを付与してupsert
       const upsertData = data.map((c) => ({ ...c, image_id: imageId }));
@@ -64,8 +61,12 @@ export function useCircleStorage(
 
   useEffect(() => {
     debouncedSave(circles, imageId, deletedCircleIds);
+    // 削除処理が終わった後にdeletedCircleIdsをリセット
+    if (deletedCircleIds && deletedCircleIds.length > 0) {
+      setDeletedCircleIds([]);
+    }
     return () => {
       debouncedSave.cancel();
     };
-  }, [circles, imageId, deletedCircleIds, debouncedSave]);
+  }, [deletedCircleIds, debouncedSave, imageId, circles, setDeletedCircleIds]);
 }
